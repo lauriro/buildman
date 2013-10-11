@@ -5,9 +5,10 @@ process.chdir( process.env.PWD )
 var exec = require('child_process').exec
 var spawn = require("child_process").spawn
 , fs = require('fs')
-, conf = require( process.env.PWD + '/package.json').buildman || {}
+, conf = require( process.env.PWD + '/package.json') || {}
 
 
+var replace = require("replace");
 
 function callmin(file, min_file) {
 	var http = require('http'),
@@ -46,6 +47,10 @@ function callmin(file, min_file) {
 		res.on('end', function(){
 			var compiledCode = JSON.parse(text).compiledCode;
 			fs.writeFileSync(min_file, compiledCode);
+
+			if (file == conf.main) {
+				console.log("Main!")
+			}
 		})
 	});
 
@@ -57,11 +62,11 @@ function callmin(file, min_file) {
 
 function buildAll() {
 	console.log('Build all!', conf)
-	var min = Object.keys(conf || {})
+	var min = Object.keys(conf.buildman || {})
 
 	min.forEach(function(file){
 		console.log("build " + file)
-		callmin(conf[file], file)
+		callmin(conf.buildman[file], file)
 	})
 
 }
