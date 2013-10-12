@@ -8,13 +8,19 @@ var spawn = require("child_process").spawn
 , conf = require( process.env.PWD + '/package.json') || {}
 
 
-var replace = require("replace");
 
 function callmin(file, min_file) {
-	var http = require('http'),
-	querystring = require('querystring');
+	if (typeof file == 'string') file = [file]
+	
+	var http = require('http')
+	, querystring = require('querystring')
+	, fileString = file.map(function(name){
+		return fs.readFileSync(name, 'utf8')
+	}).join('\n')
 
 
+	
+	fs.writeFileSync(min_file.replace('.js', '-src.js'), fileString);
 
 
 	// Build the post string from an object
@@ -22,7 +28,7 @@ function callmin(file, min_file) {
 		//'compilation_level' : 'ADVANCED_OPTIMIZATIONS',
 		'output_format': 'json',
 		'output_info': ['compiled_code', 'warnings', 'errors', 'statistics'],
-		'js_code' : fs.readFileSync(file, 'utf8')
+		'js_code' : fileString
 	});
 
 
