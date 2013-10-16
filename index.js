@@ -1,7 +1,6 @@
 
 process.chdir( process.env.PWD )
 
-//console.log(process)
 var exec = require('child_process').exec
 var spawn = require("child_process").spawn
 , fs = require('fs')
@@ -15,12 +14,12 @@ function callmin(file, min_file) {
 	var http = require('http')
 	, querystring = require('querystring')
 	, fileString = file.map(function(name){
-		return fs.readFileSync(name, 'utf8')
+		return fs.readFileSync( fs.existsSync(name) ? name : require.resolve(name), 'utf8')
 	}).join('\n')
 
-
-	
-	fs.writeFileSync(min_file.replace('.js', '-src.js'), fileString);
+	if (file.length > 1) {
+		fs.writeFileSync(min_file.replace('.js', '-src.js'), fileString);
+	}
 
 
 	// Build the post string from an object
@@ -55,7 +54,6 @@ function callmin(file, min_file) {
 			fs.writeFileSync(min_file, compiledCode);
 
 			if (file == conf.main) {
-				console.log("Main!")
 			}
 		})
 	});
@@ -67,11 +65,9 @@ function callmin(file, min_file) {
 }
 
 function buildAll() {
-	console.log('Build all!', conf)
 	var min = Object.keys(conf.buildman || {})
 
 	min.forEach(function(file){
-		console.log("build " + file)
 		callmin(conf.buildman[file], file)
 	})
 
