@@ -8,7 +8,7 @@ var spawn = require("child_process").spawn
 
 
 
-function callmin(file, min_file) {
+function callmin(file, min_file, next) {
 	if (typeof file == 'string') file = [file]
 	
 	var http = require('http')
@@ -55,6 +55,7 @@ function callmin(file, min_file) {
 
 			if (file == conf.main) {
 			}
+			next && next()
 		})
 	});
 
@@ -63,6 +64,8 @@ function callmin(file, min_file) {
 	post_req.end();
 
 }
+
+exports.callmin = callmin
 
 function buildAll() {
 	var min = Object.keys(conf.buildman || {})
