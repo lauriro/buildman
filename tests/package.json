@@ -1,0 +1,10 @@
+{
+"name": "buildman-tests",
+"version": "0.0.1",
+"buildman": {
+"m.js": [
+"dummy"
+]
+},
+"private": true
+}

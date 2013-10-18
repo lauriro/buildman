@@ -11,10 +11,25 @@ var spawn = require("child_process").spawn
 function callmin(file, min_file, next) {
 	if (typeof file == 'string') file = [file]
 	
+	var newestSource = 0
+
+	file.forEach(function(name, i, arr){
+		if (!fs.existsSync(name)) {
+			name = arr[i] = require.resolve(name)
+		}
+		var stat = fs.statSync(name)
+		if (newestSource < stat.mtime) newestSource = stat.mtime
+	})
+
+	if (newestSource < fs.statSync(min_file).mtime) return next && next();
+	
+	console.log("# Build "+min_file)
+	
+	
 	var http = require('http')
 	, querystring = require('querystring')
 	, fileString = file.map(function(name){
-		return fs.readFileSync( fs.existsSync(name) ? name : require.resolve(name), 'utf8')
+		return fs.readFileSync(name, 'utf8')
 	}).join('\n')
 
 	if (file.length > 1) {
