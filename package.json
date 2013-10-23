@@ -1,24 +1,27 @@
 {
-	"name": "buildman",
-	"version": "0.0.4",
-	"description": "Expiremental webapp bundler",
-	"main": "index.js",
-	"scripts": {
-		"test": "node tests/run.js"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git://github.com/lauriro/buildman.git"
-	},
-	"keywords": [
-		"readme"
-	],
-	"author": "Lauri Rooden <lauri@rooden.ee>",
-	"license": "MIT",
-	"devDependencies": {
-		"testman": "*"
-	},
-	"bugs": {
-		"url": "https://github.com/lauriro/buildman/issues"
-	}
+  "name": "buildman",
+  "version": "0.0.5",
+  "description": "Expiremental webapp bundler",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/lauriro/buildman.git"
+  },
+  "keywords": [
+    "readme"
+  ],
+  "author": "Lauri Rooden <lauri@rooden.ee>",
+  "license": "MIT",
+  "devDependencies": {
+    "testman": "*"
+  },
+  "bugs": {
+    "url": "https://github.com/lauriro/buildman/issues"
+  },
+  "dependencies": {
+    "html-minifier": "~0.5.4"
+  }
 }

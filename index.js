@@ -1,39 +1,45 @@
 
-process.chdir( process.env.PWD )
 
-var exec = require('child_process').exec
-var spawn = require("child_process").spawn
-, fs = require('fs')
+var fs = require('fs')
 , conf = require( process.env.PWD + '/package.json') || {}
 
 
 
-function callmin(file, min_file, next) {
-	if (typeof file == 'string') file = [file]
-	
-	var newestSource = 0
+function prepare_options(args) {
 
-	file.forEach(function(name, i, arr){
+	if (typeof args.input == 'string') args.input = [args.input]
+	
+	var newest = 0
+
+	args.input.forEach(function(name, i, arr){
 		if (!fs.existsSync(name)) {
 			name = arr[i] = require.resolve(name)
 		}
 		var stat = fs.statSync(name)
-		if (newestSource < stat.mtime) newestSource = stat.mtime
+		if (newest < +stat.mtime) newest = stat.mtime
 	})
 
-	if (newestSource < fs.statSync(min_file).mtime) return next && next();
+	if (fs.existsSync(args.output) && newest < fs.statSync(args.output).mtime) {
+		args.next && args.next()
+		return true
+	}
 	
-	console.log("# Build "+min_file)
-	
-	
+	console.log("# Build " + args.output)
+}
+
+
+
+function callmin(args) {
+	if (prepare_options(args)) return
+
 	var http = require('http')
 	, querystring = require('querystring')
-	, fileString = file.map(function(name){
+	, fileString = args.input.map(function(name){
 		return fs.readFileSync(name, 'utf8')
 	}).join('\n')
 
-	if (file.length > 1) {
-		fs.writeFileSync(min_file.replace('.js', '-src.js'), fileString);
+	if (args.input.length > 1) {
+		fs.writeFileSync(args.output.replace('.js', '-src.js'), fileString);
 	}
 
 
@@ -66,11 +72,9 @@ function callmin(file, min_file, next) {
 		});
 		res.on('end', function(){
 			var compiledCode = JSON.parse(text).compiledCode;
-			fs.writeFileSync(min_file, compiledCode);
+			fs.writeFileSync(args.output, compiledCode);
 
-			if (file == conf.main) {
-			}
-			next && next()
+			args.next && args.next()
 		})
 	});
 
@@ -80,13 +84,38 @@ function callmin(file, min_file, next) {
 
 }
 
-exports.callmin = callmin
+function min_html(args) {
+	if (prepare_options(args)) return
+	
+	var minify = require("html-minifier").minify;
+	
+	var input = args.input.map(function(name){
+		return fs.readFileSync(name, 'utf8')
+	}).join('\n')
+
+	var output = minify(input, { 
+		removeComments: true,
+		collapseWhitespace: true});
+	fs.writeFileSync(args.output, output);
+
+	args.next && args.next()
+}
+
 
 function buildAll() {
 	var min = Object.keys(conf.buildman || {})
 
 	min.forEach(function(file){
-		callmin(conf.buildman[file], file)
+		var args = {
+			input: conf.buildman[file],
+			output: file
+		}
+		switch (file.split(".").pop()) {
+		case "js":		callmin(args);		break;
+		case "html":	min_html(args);		break;
+		default:
+			console.error("Unknown type "+file)
+		}
 	})
 
 }
@@ -99,7 +128,17 @@ function invalidTarget(name) {
 	console.error("ERROR: invalid target " + name)
 }
 
-for (var i = 2, val; val = process.argv[i++]; ) {
-	;( map[val] || invalidTarget )(val)
-};
+if (module.parent) {
+	// Used as module
+
+	exports.callmin = callmin
+	exports.min_html = min_html
+} else {
+	// executed as standalone
+	
+	for (var i = 2, val; val = process.argv[i++]; ) {
+		;( map[val] || invalidTarget )(val)
+	};
+}
+
 
