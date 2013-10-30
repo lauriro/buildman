@@ -1,7 +1,13 @@
 
 
+
+var 
+	BUILD_ROOT = "public/b"
+	CONF_FILE = process.env.PWD + '/package.json'
+
 var fs = require('fs')
-, conf = require( process.env.PWD + '/package.json') || {}
+, exec = require('child_process').exec
+, conf = require( CONF_FILE ) || {}
 
 
 
@@ -9,7 +15,8 @@ function prepare_options(args) {
 
 	if (typeof args.input == 'string') args.input = [args.input]
 	
-	var newest = 0
+	// Build on conf changes
+	var newest = fs.statSync(CONF_FILE).mtime
 
 	args.input.forEach(function(name, i, arr){
 		if (!fs.existsSync(name)) {
@@ -101,11 +108,32 @@ function min_html(args) {
 	args.next && args.next()
 }
 
+var map = {
+	"--all": buildAll,
+	"--bundle": buildBundle
+}
+
+
+function buildBundle() {
+
+	if (fs.existsSync(BUILD_ROOT)) {
+
+	} else {
+		fs.mkdirSync(BUILD_ROOT)
+	} 
+	// get list of hashs
+	exec('git log --format=%H -6', function (err, out, stderr) {
+		console.log(out.split(/\s+/))
+	})
+
+}
 
 function buildAll() {
 	var min = Object.keys(conf.buildman || {})
 
 	min.forEach(function(file){
+		if (map[file]) return
+
 		var args = {
 			input: conf.buildman[file],
 			output: file
@@ -120,9 +148,6 @@ function buildAll() {
 
 }
 
-var map = {
-	"--all": buildAll
-}
 
 function invalidTarget(name) {
 	console.error("ERROR: invalid target " + name)
