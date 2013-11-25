@@ -92,17 +92,27 @@ function callmin(args) {
 }
 
 function min_html(args) {
+	args.input = [args.files.template, args.files.bootstrap]
+
 	if (prepare_options(args)) return
 	
-	var minify = require("html-minifier").minify;
-	
-	var input = args.input.map(function(name){
-		return fs.readFileSync(name, 'utf8')
-	}).join('\n')
+	var input = fs.readFileSync(args.files.template, 'utf8')
 
-	var output = minify(input, { 
-		removeComments: true,
-		collapseWhitespace: true});
+	var scripts = []
+	var output = input
+	.replace(/\s+</g, '<')
+	.replace(/<!--.*?-->/g, '')
+	.replace(/<(script) .*?src="(.*?)".*?><\/\1>/g, function(_, tag, file){
+		scripts.push(file)
+		return '\n'
+	})
+	.replace(/\n+/, function(){
+		var bs = fs.readFileSync(args.files.bootstrap, 'utf8')
+		.replace("this,[]", "this," + JSON.stringify(scripts) )
+
+		return '<script>'+bs+'</'+'script>'
+	})
+
 	fs.writeFileSync(args.output, output);
 
 	args.next && args.next()
@@ -134,13 +144,20 @@ function buildAll() {
 	min.forEach(function(file){
 		if (map[file]) return
 
+		var c = conf.buildman[file]
+
 		var args = {
-			input: conf.buildman[file],
 			output: file
 		}
 		switch (file.split(".").pop()) {
-		case "js":		callmin(args);		break;
-		case "html":	min_html(args);		break;
+		case "js":
+			args.input = c
+			callmin(args);
+			break;
+		case "html":
+			args.files = c
+			min_html(args);
+			break;
 		default:
 			console.error("Unknown type "+file)
 		}
