@@ -8,7 +8,7 @@ describe("buildman").
 		run(function(){
 			console.log("# run 1")
 			fs.unlink("tests/test-min.js")
-			buildman.callmin({
+			buildman.min_js({
 				input: ["dummy"],
 				output: "tests/test-min.js"
 			}, this.wait() )

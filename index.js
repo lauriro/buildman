@@ -1,9 +1,9 @@
 
 
 
-var 
-	BUILD_ROOT = "public/b"
-	CONF_FILE = process.env.PWD + '/package.json'
+var undef
+, BUILD_ROOT = "public/b"
+, CONF_FILE  = process.env.PWD + '/package.json'
 
 var fs = require('fs')
 , exec = require('child_process').exec
@@ -36,12 +36,16 @@ function prepare_options(args, next) {
 
 
 
-function callmin(args, next) {
+function min_js(args, next) {
 	if (prepare_options(args, next)) return
 
 	var http = require('http')
+	, subDirFileRe = /\//
 	, querystring = require('querystring')
 	, fileString = args.input.map(function(name){
+		if (!subDirFileRe.test(name)) {
+			update_readme(name)
+		}
 		return fs.readFileSync(name, 'utf8')
 	}).join('\n')
 
@@ -78,10 +82,9 @@ function callmin(args, next) {
 			text += chunk
 		});
 		res.on('end', function(){
-			var compiledCode = JSON.parse(text).compiledCode;
-			fs.writeFileSync(args.output, compiledCode);
-
-			next && next()
+			var json = JSON.parse(text)
+			fs.writeFile(args.output, json.compiledCode, next);
+			if (!json.compiledCode) console.log(json)
 		})
 	});
 
@@ -115,9 +118,17 @@ function min_html(args, next) {
 		return '<script>'+bs+'</'+'script>'
 	})
 
-	fs.writeFileSync(args.output, output);
+	fs.writeFile(args.output, output, next);
 
-	next && next()
+}
+
+
+function update_readme(file, next) {
+	console.log("ver", file)
+	var data = fs.readFileSync(file, 'utf8')
+	var result = data.replace(/(@version\s+).*/g, '$1' + conf.version);
+	
+	fs.writeFileSync(file, result, 'utf8')
 }
 
 var map = {
@@ -154,7 +165,7 @@ function buildAll() {
 		switch (file.split(".").pop()) {
 		case "js":
 			args.input = c
-			callmin(args);
+			min_js(args);
 			break;
 		case "html":
 			args.files = c
@@ -175,7 +186,7 @@ function invalidTarget(name) {
 if (module.parent) {
 	// Used as module
 
-	exports.callmin = callmin
+	exports.min_js = min_js
 	exports.min_html = min_html
 } else {
 	// executed as standalone
