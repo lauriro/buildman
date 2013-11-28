@@ -10,9 +10,8 @@ describe("buildman").
 			fs.unlink("tests/test-min.js")
 			buildman.callmin({
 				input: ["dummy"],
-				output: "tests/test-min.js",
-				next: this.wait()
-			})
+				output: "tests/test-min.js"
+			}, this.wait() )
 		}).
 		run(function(){
 			console.log("# run 2")
@@ -37,9 +36,8 @@ describe("buildman").
 					template: "tests/test.html",
 					bootstrap: "tests/test-min.js"
 				},
-				output: "tests/test-min.html",
-				next: this.wait()
-			})
+				output: "tests/test-min.html"	
+			}, this.wait())
 		}).
 		equal(
 			function(){

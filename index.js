@@ -11,7 +11,7 @@ var fs = require('fs')
 
 
 
-function prepare_options(args) {
+function prepare_options(args, next) {
 
 	if (typeof args.input == 'string') args.input = [args.input]
 	
@@ -27,7 +27,7 @@ function prepare_options(args) {
 	})
 
 	if (fs.existsSync(args.output) && newest < fs.statSync(args.output).mtime) {
-		args.next && args.next()
+		next && next()
 		return true
 	}
 	
@@ -36,8 +36,8 @@ function prepare_options(args) {
 
 
 
-function callmin(args) {
-	if (prepare_options(args)) return
+function callmin(args, next) {
+	if (prepare_options(args, next)) return
 
 	var http = require('http')
 	, querystring = require('querystring')
@@ -81,7 +81,7 @@ function callmin(args) {
 			var compiledCode = JSON.parse(text).compiledCode;
 			fs.writeFileSync(args.output, compiledCode);
 
-			args.next && args.next()
+			next && next()
 		})
 	});
 
@@ -91,22 +91,24 @@ function callmin(args) {
 
 }
 
-function min_html(args) {
+function min_html(args, next) {
 	args.input = [args.files.template, args.files.bootstrap]
 
-	if (prepare_options(args)) return
+	if (prepare_options(args, next)) return
 	
 	var input = fs.readFileSync(args.files.template, 'utf8')
 
 	var scripts = []
 	var output = input
+	.replace(/\n\s*\n/g, '\n')
+	.replace(/\t/g, '  ')
 	.replace(/\s+</g, '<')
 	.replace(/<!--.*?-->/g, '')
 	.replace(/<(script) .*?src="(.*?)".*?><\/\1>/g, function(_, tag, file){
 		scripts.push(file)
-		return '\n'
+		return '\f'
 	})
-	.replace(/\n+/, function(){
+	.replace(/\f+/, function(){
 		var bs = fs.readFileSync(args.files.bootstrap, 'utf8')
 		.replace("this,[]", "this," + JSON.stringify(scripts) )
 
@@ -115,7 +117,7 @@ function min_html(args) {
 
 	fs.writeFileSync(args.output, output);
 
-	args.next && args.next()
+	next && next()
 }
 
 var map = {
