@@ -1,6 +1,14 @@
 
 
 
+/*
+* @version  0.1.0
+* @date     2014-01-02
+* @license  MIT License  - http://lauri.rooden.ee/mit-license.txt
+*/
+
+
+
 var undef
 , BUILD_ROOT = "public/b"
 , CONF_FILE  = process.env.PWD + '/package.json'
@@ -44,6 +52,7 @@ function min_js(args, next) {
 	, querystring = require('querystring')
 	, fileString = args.input.map(function(name){
 		if (!subDirFileRe.test(name)) {
+			console.log("# Update readme: " + name)
 			update_readme(name)
 		}
 		return fs.readFileSync(name, 'utf8')
@@ -123,12 +132,13 @@ function min_html(args, next) {
 }
 
 
-function update_readme(file, next) {
-	console.log("ver", file)
+function update_readme(file) {
 	var data = fs.readFileSync(file, 'utf8')
-	var result = data.replace(/(@version\s+).*/g, '$1' + conf.version);
-	
-	fs.writeFileSync(file, result, 'utf8')
+
+	data = data.replace(/(@version\s+).*/g, '$1' + conf.version)
+	data = data.replace(/(@date\s+).*/g, '$1' + ( new Date().toISOString().split("T")[0] ))
+
+	fs.writeFileSync(file, data, 'utf8')
 }
 
 var map = {
@@ -153,6 +163,8 @@ function buildBundle() {
 
 function buildAll() {
 	var min = Object.keys(conf.buildman || {})
+
+	update_readme(conf.readmeFilename)
 
 	min.forEach(function(file){
 		if (map[file]) return
@@ -190,7 +202,7 @@ if (module.parent) {
 	exports.min_html = min_html
 } else {
 	// executed as standalone
-	
+
 	for (var i = 2, val; val = process.argv[i++]; ) {
 		;( map[val] || invalidTarget )(val)
 	};

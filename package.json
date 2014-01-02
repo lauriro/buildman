@@ -1,9 +1,10 @@
 {
   "name": "buildman",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "Expiremental webapp bundler",
   "main": "index.js",
   "scripts": {
+    "build": "node index.js --all",
     "test": "node tests/run.js"
   },
   "repository": {
@@ -20,5 +21,9 @@
   },
   "bugs": {
     "url": "https://github.com/lauriro/buildman/issues"
-  }
+  },
+  "buildman": {
+    "min.js": "index.js"
+  },
+  "readmeFilename": "README.md"
 }
