@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.1.0
-* @date     2014-01-02
+* @version  0.1.1
+* @date     2014-01-06
 * @license  MIT License  - http://lauri.rooden.ee/mit-license.txt
 */
 
@@ -134,11 +134,11 @@ function min_html(args, next) {
 
 function update_readme(file) {
 	var data = fs.readFileSync(file, 'utf8')
+	, out = data.replace(/(@version\s+).*/g, '$1' + conf.version)
 
-	data = data.replace(/(@version\s+).*/g, '$1' + conf.version)
-	data = data.replace(/(@date\s+).*/g, '$1' + ( new Date().toISOString().split("T")[0] ))
+	out = out.replace(/(@date\s+).*/g, '$1' + ( new Date().toISOString().split("T")[0] ))
 
-	fs.writeFileSync(file, data, 'utf8')
+	if (data != out) fs.writeFileSync(file, out, 'utf8')
 }
 
 var map = {
