@@ -2,9 +2,9 @@
 
 
 /*
-* @version  0.1.1
-* @date     2014-01-06
-* @license  MIT License  - http://lauri.rooden.ee/mit-license.txt
+* @version  0.1.2
+* @date     2014-01-07
+* @license  MIT License
 */
 
 
@@ -52,7 +52,6 @@ function min_js(args, next) {
 	, querystring = require('querystring')
 	, fileString = args.input.map(function(name){
 		if (!subDirFileRe.test(name)) {
-			console.log("# Update readme: " + name)
 			update_readme(name)
 		}
 		return fs.readFileSync(name, 'utf8')
@@ -91,9 +90,14 @@ function min_js(args, next) {
 			text += chunk
 		});
 		res.on('end', function(){
-			var json = JSON.parse(text)
-			fs.writeFile(args.output, json.compiledCode, next);
-			if (!json.compiledCode) console.log(json)
+			try {
+				var json = JSON.parse(text)
+				fs.writeFile(args.output, json.compiledCode, next);
+				if (!json.compiledCode) console.log(json)
+			} catch (e) {
+				console.error(text)
+				throw "Invalid response"
+			}
 		})
 	});
 
@@ -131,12 +135,23 @@ function min_html(args, next) {
 
 }
 
+var translate = {
+	// http://nodejs.org/api/documentation.html
+	stability: "0 - Deprecated,1 - Experimental,2 - Unstable,3 - Stable,4 - API Frozen,5 - Locked".split(","),
+	// https://spdx.org/licenses/
+	license: require("./all-licenses.json"),
+	date: new Date().toISOString().split("T")[0]
+}
+
+
 
 function update_readme(file) {
+	console.log("# Update readme: " + file)
 	var data = fs.readFileSync(file, 'utf8')
-	, out = data.replace(/(@version\s+).*/g, '$1' + conf.version)
-
-	out = out.replace(/(@date\s+).*/g, '$1' + ( new Date().toISOString().split("T")[0] ))
+	, out = data.replace(/(@(version|date|author|license|stability)\s+).*/g, function(all, match, tag) {
+		tag = translate[tag] ? translate[tag][conf[tag]] || translate[tag] : conf[tag]
+		return tag ? match + tag : all
+	})
 
 	if (data != out) fs.writeFileSync(file, out, 'utf8')
 }

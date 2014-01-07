@@ -1,8 +1,15 @@
 {
   "name": "buildman",
-  "version": "0.1.1",
+  "version": "0.1.2",
+  "stability": 1,
+  "license": "MIT",
+  "author": "Lauri Rooden <lauri@rooden.ee>",
   "description": "Expiremental webapp bundler",
+  "keywords": [
+    "readme"
+  ],
   "main": "index.js",
+  "readmeFilename": "README.md",
   "scripts": {
     "build": "node index.js --all",
     "test": "node tests/run.js"
@@ -11,19 +18,13 @@
     "type": "git",
     "url": "git://github.com/lauriro/buildman.git"
   },
-  "keywords": [
-    "readme"
-  ],
-  "author": "Lauri Rooden <lauri@rooden.ee>",
-  "license": "MIT",
-  "devDependencies": {
-    "testman": "*"
-  },
   "bugs": {
     "url": "https://github.com/lauriro/buildman/issues"
   },
+  "devDependencies": {
+    "testman": "*"
+  },
   "buildman": {
     "min.js": "index.js"
-  },
-  "readmeFilename": "README.md"
+  }
 }

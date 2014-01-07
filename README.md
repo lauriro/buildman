@@ -1,6 +1,7 @@
 
-    @version  0.1.1
-    @date     2014-01-06
+    @version    0.1.2
+    @date       2014-01-07
+    @stability  1 - Experimental
 
 
 Buildman
