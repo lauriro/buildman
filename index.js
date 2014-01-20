@@ -115,18 +115,27 @@ function min_html(args, next) {
 	var input = fs.readFileSync(args.files.template, 'utf8')
 
 	var scripts = []
+	var defer_scripts = []
+	var deferRe = /\bdefer\b/i
+	var exclude = args.files.exclude || []
+	var replace = args.files.replace || {}
 	var output = input
 	.replace(/\n\s*\n/g, '\n')
 	.replace(/\t/g, '  ')
 	.replace(/\s+</g, '<')
 	.replace(/<!--.*?-->/g, '')
 	.replace(/<(script) .*?src="(.*?)".*?><\/\1>/g, function(_, tag, file){
-		scripts.push(file)
+		if (exclude.indexOf(file) == -1) {
+			file = replace[file] || file
+			if (deferRe.test(_)) defer_scripts.push(file)
+			else scripts.push( file )
+		}
 		return '\f'
 	})
 	.replace(/\f+/, function(){
 		var bs = fs.readFileSync(args.files.bootstrap, 'utf8')
-		.replace("this,[]", "this," + JSON.stringify(scripts) )
+		.replace("this,[]", "this," + JSON.stringify(scripts) +
+			(defer_scripts.length ? ', function(){xhr.load(' + JSON.stringify(defer_scripts) + ')}' : "") )
 
 		return '<script>'+bs+'</'+'script>'
 	})
