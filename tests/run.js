@@ -34,6 +34,9 @@ describe("buildman").
 			buildman.min_html({
 				template: "tests/test.html",
 				bootstrap: "tests/test-min.js",
+				replace: {
+					"app.css": "min.css"
+				},
 				output: "tests/test-min.html"	
 			}, this.wait())
 		}).

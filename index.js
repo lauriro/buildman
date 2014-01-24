@@ -2,7 +2,7 @@
 
 
 /*
-* @version  0.1.4
+* @version  0.1.5
 * @date     2014-01-24
 * @license  MIT License
 */
@@ -50,6 +50,7 @@ function min_js(args, next) {
 	var http = require('http')
 	, subDirFileRe = /\//
 	, querystring = require('querystring')
+	, banner = args.banner ? args.banner + "\n" : ""
 	, fileString = args.input.map(function(name){
 		if (!subDirFileRe.test(name)) {
 			update_readme(name)
@@ -58,7 +59,7 @@ function min_js(args, next) {
 	}).join('\n')
 
 	if (args.input.length > 1) {
-		fs.writeFileSync(args.output.replace('.js', '-src.js'), fileString);
+		fs.writeFileSync(args.output.replace('.js', '-src.js'), banner + fileString);
 	}
 
 
@@ -82,7 +83,6 @@ function min_js(args, next) {
 		}
 	};
 
-	var banner = args.banner ? args.banner + "\n" : ""
 
 	// Set up the request
 	var post_req = http.request(post_options, function(res) {
@@ -126,11 +126,19 @@ function min_html(args, next) {
 	.replace(/\t/g, '  ')
 	.replace(/\s+</g, '<')
 	.replace(/<!--.*?-->/g, '')
-	.replace(/<(script) .*?src="(.*?)".*?><\/\1>/g, function(_, tag, file){
+	// <link rel="stylesheet" type="text/css" href="app.css">
+	//.replace(/<link>/)
+	.replace(/<link[^>]+href="([^>]*?)"[^>]*>/g, function(_, file){
+		if (replace[file]) {
+			return _.replace(file, replace[file])
+		}
+		return _
+	})
+	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file){
 		if (exclude.indexOf(file) == -1) {
 			file = replace[file] || file
-			if (deferRe.test(_)) defer_scripts.push(file)
-			else scripts.push( file )
+			var arr = deferRe.test(_) ? defer_scripts : scripts
+			if (arr.indexOf(file) == -1) arr.push(file)
 		}
 		return '\f'
 	})
