@@ -2,19 +2,22 @@
 var buildman = require("../")
 , fs = require('fs')
 
+function rm(fileName) {
+	if (fs.existsSync(fileName))
+		fs.unlinkSync(fileName)
+}
+
+
 require("testman").
 describe("buildman").
 	it( "should minimize js" ).
 		run(function(){
-			console.log("# run 1")
-			fs.unlink("tests/test-min.js")
+			rm("tests/test-min.js")
 			buildman.min_js({
 				input: ["dummy"],
+				banner: "/*!banner*/",
 				output: "tests/test-min.js"
 			}, this.wait() )
-		}).
-		run(function(){
-			console.log("# run 2")
 		}).
 		equal(
 			function(){
@@ -25,17 +28,12 @@ describe("buildman").
 				return ""+fs.readFileSync("tests/test-min.js")
 			}
 		).
-		run(function(){
-			console.log("# run 4")
-		}).
 	it( "should minimize html" ).
 		run(function(){
-			fs.unlink("tests/test-min.html")
+			rm("tests/test-min.html")
 			buildman.min_html({
-				files: {
-					template: "tests/test.html",
-					bootstrap: "tests/test-min.js"
-				},
+				template: "tests/test.html",
+				bootstrap: "tests/test-min.js",
 				output: "tests/test-min.html"	
 			}, this.wait())
 		}).

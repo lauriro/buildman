@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.1.2
-* @date     2014-01-07
+* @version  0.1.4
+* @date     2014-01-24
 * @license  MIT License
 */
 
@@ -21,10 +21,10 @@ var fs = require('fs')
 
 function prepare_options(args, next) {
 
-	if (typeof args.input == 'string') args.input = [args.input]
 	
 	// Build on conf changes
 	var newest = fs.statSync(CONF_FILE).mtime
+
 
 	args.input.forEach(function(name, i, arr){
 		if (!fs.existsSync(name)) {
@@ -82,6 +82,8 @@ function min_js(args, next) {
 		}
 	};
 
+	var banner = args.banner ? args.banner + "\n" : ""
+
 	// Set up the request
 	var post_req = http.request(post_options, function(res) {
 		var text = ""
@@ -92,7 +94,7 @@ function min_js(args, next) {
 		res.on('end', function(){
 			try {
 				var json = JSON.parse(text)
-				fs.writeFile(args.output, json.compiledCode, next);
+				fs.writeFile(args.output, banner + json.compiledCode, next);
 				if (!json.compiledCode) console.log(json)
 			} catch (e) {
 				console.error(text)
@@ -108,18 +110,18 @@ function min_js(args, next) {
 }
 
 function min_html(args, next) {
-	args.input = [args.files.template, args.files.bootstrap]
+	args.input = [args.template, args.bootstrap]
 
 	if (prepare_options(args, next)) return
 	
-	var input = fs.readFileSync(args.files.template, 'utf8')
+	var files = fs.readFileSync(args.template, 'utf8')
 
 	var scripts = []
 	var defer_scripts = []
 	var deferRe = /\bdefer\b/i
-	var exclude = args.files.exclude || []
-	var replace = args.files.replace || {}
-	var output = input
+	var exclude = args.exclude || []
+	var replace = args.replace || {}
+	var output = files
 	.replace(/\n\s*\n/g, '\n')
 	.replace(/\t/g, '  ')
 	.replace(/\s+</g, '<')
@@ -133,11 +135,11 @@ function min_html(args, next) {
 		return '\f'
 	})
 	.replace(/\f+/, function(){
-		var bs = fs.readFileSync(args.files.bootstrap, 'utf8')
+		var bs = fs.readFileSync(args.bootstrap, 'utf8')
 		.replace("this,[]", "this," + JSON.stringify(scripts) +
 			(defer_scripts.length ? ', function(){xhr.load(' + JSON.stringify(defer_scripts) + ')}' : "") )
 
-		return '<script>'+bs+'</'+'script>'
+		return '<script>\n'+bs+'</'+'script>'
 	})
 
 	fs.writeFile(args.output, output, next);
@@ -190,25 +192,24 @@ function buildAll() {
 
 	update_readme(conf.readmeFilename)
 
-	min.forEach(function(file){
+	min.forEach(function(output) {
 		if (map[file]) return
 
-		var c = conf.buildman[file]
+		var file = conf.buildman[output]
+		if (typeof file == "string") file = [file]
+		if (Array.isArray(file)) file = { input: file }
 
-		var args = {
-			output: file
-		}
-		switch (file.split(".").pop()) {
+		file.output = output
+
+		switch (output.split(".").pop()) {
 		case "js":
-			args.input = c
-			min_js(args);
+			min_js(file);
 			break;
 		case "html":
-			args.files = c
-			min_html(args);
+			min_html(file);
 			break;
 		default:
-			console.error("Unknown type "+file)
+			console.error("Unknown type "+output)
 		}
 	})
 
