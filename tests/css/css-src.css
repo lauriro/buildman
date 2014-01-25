@@ -1,0 +1,14 @@
+/*
+Main CSS file
+*/
+
+@import url("common.css");
+@import url("theme/main.css");
+
+b {
+	color: red;
+	background: none;
+	content: "\00a0";
+	border-color:transparent #abc transparent transparent;
+}
+

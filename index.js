@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.1.5
-* @date     2014-01-24
+* @version  0.1.6
+* @date     2014-01-25
 * @license  MIT License
 */
 
@@ -154,6 +154,75 @@ function min_html(args, next) {
 
 }
 
+function css_import(str, path, root) {
+	if (path)
+		str = str.replace(/url\(['"]?/g, "$&"+path)
+
+	return str.replace(/@import\s+url\((['"]?)(.+?)\1\);*/g, function(_, quote, fileName) {
+		var file = fs.readFileSync(root + fileName, 'utf8')
+		return css_import(file, fileName.replace(/[^\/]*$/, ""), root)
+	})
+}
+
+function min_css(args, next) {
+
+	if (prepare_options(args, next)) return
+
+	var root = args.output.replace(/[^\/]*$/, "")
+	
+	var out = css_import("@import url('" + args.input.map(function(name){
+		return name.slice(root.length)
+	}).join("');@import url('") + "');", "", root);
+
+	out = out.replace(/\/\*[^@!][\s\S]*?\*\//g, "")
+	
+	//TODO:sprite
+	//out = out.replace(/url\((['"]?)(.+?)\1\)[; \t]*\/\*!\s*data-uri\s*\*\//g, function(_, quote, fileName) {
+	out = out.replace(/(.*)\/\*!\s*([\w-]+)\s*([\w-.]*)\s*\*\//g, function(_, line, cmd, param) {
+		switch (cmd) {
+		case "data-uri":
+			line = line.replace(/url\((['"]?)(.+?)\1\)/g, function(_, quote, fileName) {
+				var str = fs.readFileSync(root + fileName, "base64")
+				return 'url("data:image/' + fileName.split(".").pop() + ';base64,'+str+'")'
+			})
+			break;
+		case "sprite":
+			line = line.replace(/url\((['"]?)(.+?)\1\)/g, function(_, quote, fileName) {
+				return 'url("' + param+'.'+fileName.split(".").pop()+'")'
+			})
+			break;
+		}
+		return line
+	})
+
+
+	out = out.replace(/'/g, '"')
+	.replace(/[\t\n]/g, " ")
+
+	// Remove optional spaces and put each rule to separated line
+	out = out.replace(/ *([,;{}]) */g, "$1")
+	.replace(/^ */g, "")
+	.replace(/: +/g, ":")
+	.replace(/ and\(/g, " and (")
+	.replace(/;*}/g, "}\n")
+
+	// Use CSS shorthands
+	out = out.replace(/([^0-9])-?0(px|em|%|in|cm|mm|pc|pt|ex)/g, "$10")
+	.replace(/:0 0( 0 0)?(;|})/g, ":0$2")
+	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
+	.replace(/([ :,])0\.([0-9]+)/g, "$1.$2")
+	
+	/*
+sed -E \
+    -e '/(^|\{\})$/d' \
+    -e 's/([^0-9])-?0(px|em|%|in|cm|mm|pc|pt|ex)/\10/g' \
+    -e 's/:0 0( 0 0)?(;|})/:0\2/g' \
+    -e 's,url\("([[:alnum:]/_.-]*)"\),url(\1),g' \
+    -e 's/([ :,])0\.([0-9]+)/\1.\2/g'
+	*/
+	fs.writeFile(args.output, out, next);
+}
+
 var translate = {
 	// http://nodejs.org/api/documentation.html
 	stability: "0 - Deprecated,1 - Experimental,2 - Unstable,3 - Stable,4 - API Frozen,5 - Locked".split(","),
@@ -216,6 +285,9 @@ function buildAll() {
 		case "html":
 			min_html(file);
 			break;
+		case "css":
+			min_css(file);
+			break;
 		default:
 			console.error("Unknown type "+output)
 		}
@@ -233,6 +305,7 @@ if (module.parent) {
 
 	exports.min_js = min_js
 	exports.min_html = min_html
+	exports.min_css = min_css
 } else {
 	// executed as standalone
 

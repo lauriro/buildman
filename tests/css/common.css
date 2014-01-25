@@ -1,0 +1,64 @@
+html, body {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	margin: 0px;
+	padding: 0em 0em;
+}
+
+body {
+	font-size:100%;
+	line-height:1.125em;
+	-webkit-text-size-adjust:none;
+	cursor:default;
+}
+
+
+button {
+	color:			 #333;
+	font-family: helvetica;
+	font-size: 	 14px;
+
+	vertical-align:middle;
+	-webkit-user-select:none;
+	-moz-user-select:none;
+	-khtml-user-select:none;
+	user-select:none;
+	width:auto;overflow:visible; /* Fixes extra padding issue in IE */
+	cursor:pointer;*cursor:hand; /* Alternate cursor for IE */
+}
+button:active,
+button:focus {
+	outline:none;
+}
+button:active, button.active{
+	background:#f0f0f0;
+	border-color: #8e9399;
+	-webkit-box-shadow: inset 0px 2px 2px rgba(145, 145, 145, .3);
+	-moz-box-shadow: inset 0px 2px 2px rgba(145, 145, 145, .3);
+	box-shadow: inset 0px 2px 2px rgba(145, 145, 145, 0.3);
+}
+button:focus{
+	border-color: #8e9399;
+}
+button::-moz-focus-inner, input::-moz-focus-inner {
+	padding:0px;
+	border:0px;
+}
+
+/*
+global classes
+*/
+.last_line {
+	display:none !important;
+}
+
+.is-online {
+	color: red;
+}
+
+@keyframes blink {
+	to { opacity: .3; }
+}
+
+

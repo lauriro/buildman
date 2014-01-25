@@ -1,0 +1,1 @@
+ 0:theme/bg1.png:v.png 42:theme/bg2.png:v.png 0:theme/ico1.png:i.png 32:theme/ico2.png:i.png

@@ -1,0 +1,57 @@
+
+	.frame{
+		position:fixed;
+		top:10px;
+		left:10px;
+		right:10px;
+		bottom:10px;
+	}
+.frame1 {
+	background: url("px.gif"); /*! data-uri */
+}
+.frame2 {
+	background: url("px.gif");
+}
+
+.bg1, .bg2, .bg3, .sprite1, .sprite2, .sprite3 {
+	height: 42px;
+	width: 42px;
+	display: block;
+	float: left;
+	margin: 0;
+	padding: 0;
+	border: 1px solid black;
+}
+
+.bg1 {
+	background: url("bg1.png") no-repeat right top transparent;
+}
+
+.sprite1 {
+	background: url("bg1.png") no-repeat right top transparent; /*! sprite v */
+}
+
+.sprite2 {
+	background: url("bg2.png") repeat-x 0px 0px; /*! sprite v */
+}
+
+.bg2 {
+	background: url("bg2.png") repeat-x 0px 0px;
+}
+
+.sprite3 {
+	background: url("bg1.png");
+}
+
+.bg3 {
+	background: url("bg1.png") repeat-x 0px 0px; /*! sprite v */
+}
+
+.ico1 {
+	background: url("ico1.png") no-repeat left top; /*! sprite i */
+}
+
+.ico2 {
+	background: url("ico2.png") no-repeat left top; /*! sprite i */
+}
+
