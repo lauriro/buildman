@@ -1,0 +1,3 @@
+function slow(){
+	return "slow"
+}

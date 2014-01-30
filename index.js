@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.1.6
-* @date     2014-01-25
+* @version  0.1.7
+* @date     2014-01-30
 * @license  MIT License
 */
 
@@ -20,6 +20,7 @@ var fs = require('fs')
 
 
 function prepare_options(args, next) {
+	//console.log("prepare_options", args)
 
 	
 	// Build on conf changes
@@ -42,7 +43,7 @@ function prepare_options(args, next) {
 	console.log("# Build " + args.output)
 }
 
-
+function Nop(){}
 
 function min_js(args, next) {
 	if (prepare_options(args, next)) return
@@ -94,7 +95,7 @@ function min_js(args, next) {
 		res.on('end', function(){
 			try {
 				var json = JSON.parse(text)
-				fs.writeFile(args.output, banner + json.compiledCode, next);
+				fs.writeFile(args.output, banner + json.compiledCode, next||Nop);
 				if (!json.compiledCode) console.log(json)
 			} catch (e) {
 				console.error(text)
@@ -115,10 +116,13 @@ function min_html(args, next) {
 	if (prepare_options(args, next)) return
 	
 	var files = fs.readFileSync(args.template, 'utf8')
+	var root = args.template.replace(/[^\/]+$/, "")
 
 	var scripts = []
 	var defer_scripts = []
 	var deferRe = /\bdefer\b/i
+	var squash, squashFiles = []
+	var squashRe = /\bsquash\b/i
 	var exclude = args.exclude || []
 	var replace = args.replace || {}
 	var output = files
@@ -136,7 +140,18 @@ function min_html(args, next) {
 	})
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file){
 		if (exclude.indexOf(file) == -1) {
-			file = replace[file] || file
+			if (squashRe.test(_)) {
+				if (!squash) {
+					var out = squashFiles.length.toString(32) + ".js"
+					squash = { input:[], file: out, output: root + out }
+					squashFiles.push(squash)
+				}
+				squash.input.push(root + file)
+				file = squash.file
+			} else {
+				squash = null
+				file = replace[file] || file
+			}
 			var arr = deferRe.test(_) ? defer_scripts : scripts
 			if (arr.indexOf(file) == -1) arr.push(file)
 		}
@@ -148,6 +163,10 @@ function min_html(args, next) {
 			(defer_scripts.length ? ', function(){xhr.load(' + JSON.stringify(defer_scripts) + ')}' : "") )
 
 		return '<script>\n'+bs+'</'+'script>'
+	})
+
+	squashFiles.forEach(function(obj){
+		min_js(obj)
 	})
 
 	fs.writeFile(args.output, output, next);
@@ -212,14 +231,6 @@ function min_css(args, next) {
 	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
 	.replace(/([ :,])0\.([0-9]+)/g, "$1.$2")
 	
-	/*
-sed -E \
-    -e '/(^|\{\})$/d' \
-    -e 's/([^0-9])-?0(px|em|%|in|cm|mm|pc|pt|ex)/\10/g' \
-    -e 's/:0 0( 0 0)?(;|})/:0\2/g' \
-    -e 's,url\("([[:alnum:]/_.-]*)"\),url(\1),g' \
-    -e 's/([ :,])0\.([0-9]+)/\1.\2/g'
-	*/
 	fs.writeFile(args.output, out, next);
 }
 
@@ -267,7 +278,7 @@ function buildBundle() {
 function buildAll() {
 	var min = Object.keys(conf.buildman || {})
 
-	update_readme(conf.readmeFilename)
+	if (conf.readmeFilename) update_readme(conf.readmeFilename)
 
 	min.forEach(function(output) {
 		if (map[file]) return
