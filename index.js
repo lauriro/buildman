@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.1.7
-* @date     2014-01-30
+* @version  0.1.8
+* @date     2014-01-31
 * @license  MIT License
 */
 
@@ -113,7 +113,6 @@ function min_js(args, next) {
 function min_html(args, next) {
 	args.input = [args.template, args.bootstrap]
 
-	if (prepare_options(args, next)) return
 	
 	var files = fs.readFileSync(args.template, 'utf8')
 	var root = args.template.replace(/[^\/]+$/, "")
@@ -125,19 +124,12 @@ function min_html(args, next) {
 	var squashRe = /\bsquash\b/i
 	var exclude = args.exclude || []
 	var replace = args.replace || {}
+
 	var output = files
 	.replace(/\n\s*\n/g, '\n')
 	.replace(/\t/g, '  ')
 	.replace(/\s+</g, '<')
 	.replace(/<!--.*?-->/g, '')
-	// <link rel="stylesheet" type="text/css" href="app.css">
-	//.replace(/<link>/)
-	.replace(/<link[^>]+href="([^>]*?)"[^>]*>/g, function(_, file){
-		if (replace[file]) {
-			return _.replace(file, replace[file])
-		}
-		return _
-	})
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file){
 		if (exclude.indexOf(file) == -1) {
 			if (squashRe.test(_)) {
@@ -157,16 +149,28 @@ function min_html(args, next) {
 		}
 		return '\f'
 	})
+
+	squashFiles.forEach(function(obj){
+		min_js(obj)
+	})
+
+	if (prepare_options(args, next)) return
+
+	output = output
+	// <link rel="stylesheet" type="text/css" href="app.css">
+	//.replace(/<link>/)
+	.replace(/<link[^>]+href="([^>]*?)"[^>]*>/g, function(_, file){
+		if (replace[file]) {
+			return _.replace(file, replace[file])
+		}
+		return _
+	})
 	.replace(/\f+/, function(){
 		var bs = fs.readFileSync(args.bootstrap, 'utf8')
 		.replace("this,[]", "this," + JSON.stringify(scripts) +
 			(defer_scripts.length ? ', function(){xhr.load(' + JSON.stringify(defer_scripts) + ')}' : "") )
 
 		return '<script>\n'+bs+'</'+'script>'
-	})
-
-	squashFiles.forEach(function(obj){
-		min_js(obj)
 	})
 
 	fs.writeFile(args.output, output, next);
