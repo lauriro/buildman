@@ -26,6 +26,8 @@ function prepareOptions(args, next) {
 	// Build on conf changes
 	var newest = fs.statSync(CONF_FILE).mtime
 
+	if (typeof args.input == "string") args.input = [args.input]
+
 
 	args.input.forEach(function(name, i, arr){
 		if (!fs.existsSync(name)) {
@@ -58,6 +60,8 @@ function minJs(args, next) {
 		}
 		return fs.readFileSync(name, 'utf8')
 	}).join('\n')
+
+	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/\\*\\* (?="+args.toggle + ")", "g"), "/*")
 
 	if (args.input.length > 1) {
 		fs.writeFileSync(args.output.replace('.js', '-src.js'), banner + fileString);

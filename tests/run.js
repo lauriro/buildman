@@ -14,7 +14,8 @@ describe("buildman").
 		run(function(){
 			rm("tests/test-min.js")
 			buildman.minJs({
-				input: ["dummy"],
+				input: ["dummy", "tests/toggle.js"],
+				toggle: "abc|123",
 				banner: "/*!banner*/",
 				output: "tests/test-min.js"
 			}, this.wait() )
