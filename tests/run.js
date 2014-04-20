@@ -13,7 +13,7 @@ describe("buildman").
 	it( "should minimize js" ).
 		run(function(){
 			rm("tests/test-min.js")
-			buildman.min_js({
+			buildman.minJs({
 				input: ["dummy"],
 				banner: "/*!banner*/",
 				output: "tests/test-min.js"
@@ -31,7 +31,7 @@ describe("buildman").
 	it( "should minimize html" ).
 		run(function(){
 			rm("tests/test-min.html")
-			buildman.min_html({
+			buildman.minHtml({
 				template: "tests/test.html",
 				bootstrap: "tests/test-min.js",
 				replace: {
@@ -51,7 +51,7 @@ describe("buildman").
 	it( "should minimize css", {skip: "Not completed"} ).
 		run(function(){
 			rm("tests/css/css-min.css")
-			buildman.min_css({
+			buildman.minCss({
 				input: ["tests/css/css-src.css"],
 				banner: "/*!banner*/",
 				output: "tests/css/css-min.css"

@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.1.8
-* @date     2014-01-31
+* @version  0.2.0
+* @date     2014-04-20
 * @license  MIT License
 */
 
@@ -19,10 +19,10 @@ var fs = require('fs')
 
 
 
-function prepare_options(args, next) {
-	//console.log("prepare_options", args)
+function prepareOptions(args, next) {
+	//console.log("prepareOptions", args)
 
-	
+
 	// Build on conf changes
 	var newest = fs.statSync(CONF_FILE).mtime
 
@@ -39,14 +39,14 @@ function prepare_options(args, next) {
 		next && next()
 		return true
 	}
-	
+
 	console.log("# Build " + args.output)
 }
 
 function Nop(){}
 
-function min_js(args, next) {
-	if (prepare_options(args, next)) return
+function minJs(args, next) {
+	if (prepareOptions(args, next)) return
 
 	var http = require('http')
 	, subDirFileRe = /\//
@@ -54,7 +54,7 @@ function min_js(args, next) {
 	, banner = args.banner ? args.banner + "\n" : ""
 	, fileString = args.input.map(function(name){
 		if (!subDirFileRe.test(name)) {
-			update_readme(name)
+			updateReadme(name)
 		}
 		return fs.readFileSync(name, 'utf8')
 	}).join('\n')
@@ -65,7 +65,7 @@ function min_js(args, next) {
 
 
 	// Build the post string from an object
-	var post_data = querystring.stringify({
+	var postData = querystring.stringify({
 		//'compilation_level' : 'ADVANCED_OPTIMIZATIONS',
 		'output_format': 'json',
 		'output_info': ['compiled_code', 'warnings', 'errors', 'statistics'],
@@ -74,19 +74,19 @@ function min_js(args, next) {
 
 
 	// An object of options to indicate where to post to
-	var post_options = {
+	var postOptions = {
 		host: 'closure-compiler.appspot.com',
 		path: '/compile',
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
-			'Content-Length': post_data.length
+			'Content-Length': postData.length
 		}
 	};
 
 
 	// Set up the request
-	var post_req = http.request(post_options, function(res) {
+	var postReq = http.request(postOptions, function(res) {
 		var text = ""
 		res.setEncoding('utf8');
 		res.on('data', function (chunk) {
@@ -105,20 +105,20 @@ function min_js(args, next) {
 	});
 
 	// post the data
-	post_req.write(post_data);
-	post_req.end();
+	postReq.write(postData);
+	postReq.end();
 
 }
 
-function min_html(args, next) {
+function minHtml(args, next) {
 	args.input = [args.template, args.bootstrap]
 
-	
+
 	var files = fs.readFileSync(args.template, 'utf8')
 	var root = args.template.replace(/[^\/]+$/, "")
 
 	var scripts = []
-	var defer_scripts = []
+	var deferScripts = []
 	var deferRe = /\bdefer\b/i
 	var squash, squashFiles = []
 	var squashRe = /\bsquash\b/i
@@ -144,17 +144,17 @@ function min_html(args, next) {
 				squash = null
 				file = replace[file] || file
 			}
-			var arr = deferRe.test(_) ? defer_scripts : scripts
+			var arr = deferRe.test(_) ? deferScripts : scripts
 			if (arr.indexOf(file) == -1) arr.push(file)
 		}
 		return '\f'
 	})
 
 	squashFiles.forEach(function(obj){
-		min_js(obj)
+		minJs(obj)
 	})
 
-	if (prepare_options(args, next)) return
+	if (prepareOptions(args, next)) return
 
 	output = output
 	// <link rel="stylesheet" type="text/css" href="app.css">
@@ -168,7 +168,7 @@ function min_html(args, next) {
 	.replace(/\f+/, function(){
 		var bs = fs.readFileSync(args.bootstrap, 'utf8')
 		.replace("this,[]", "this," + JSON.stringify(scripts) +
-			(defer_scripts.length ? ', function(){xhr.load(' + JSON.stringify(defer_scripts) + ')}' : "") )
+			(deferScripts.length ? ', function(){xhr.load(' + JSON.stringify(deferScripts) + ')}' : "") )
 
 		return '<script>\n'+bs+'</'+'script>'
 	})
@@ -177,28 +177,28 @@ function min_html(args, next) {
 
 }
 
-function css_import(str, path, root) {
+function cssImport(str, path, root) {
 	if (path)
 		str = str.replace(/url\(['"]?/g, "$&"+path)
 
 	return str.replace(/@import\s+url\((['"]?)(.+?)\1\);*/g, function(_, quote, fileName) {
 		var file = fs.readFileSync(root + fileName, 'utf8')
-		return css_import(file, fileName.replace(/[^\/]*$/, ""), root)
+		return cssImport(file, fileName.replace(/[^\/]*$/, ""), root)
 	})
 }
 
-function min_css(args, next) {
+function minCss(args, next) {
 
-	if (prepare_options(args, next)) return
+	if (prepareOptions(args, next)) return
 
 	var root = args.output.replace(/[^\/]*$/, "")
-	
-	var out = css_import("@import url('" + args.input.map(function(name){
+
+	var out = cssImport("@import url('" + args.input.map(function(name){
 		return name.slice(root.length)
 	}).join("');@import url('") + "');", "", root);
 
 	out = out.replace(/\/\*[^@!][\s\S]*?\*\//g, "")
-	
+
 	//TODO:sprite
 	//out = out.replace(/url\((['"]?)(.+?)\1\)[; \t]*\/\*!\s*data-uri\s*\*\//g, function(_, quote, fileName) {
 	out = out.replace(/(.*)\/\*!\s*([\w-]+)\s*([\w-.]*)\s*\*\//g, function(_, line, cmd, param) {
@@ -234,7 +234,7 @@ function min_css(args, next) {
 	.replace(/:0 0( 0 0)?(;|})/g, ":0$2")
 	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
 	.replace(/([ :,])0\.([0-9]+)/g, "$1.$2")
-	
+
 	fs.writeFile(args.output, out, next);
 }
 
@@ -248,7 +248,8 @@ var translate = {
 
 
 
-function update_readme(file) {
+function updateReadme(file) {
+	if (!fs.existsSync(file)) return
 	console.log("# Update readme: " + file)
 	var data = fs.readFileSync(file, 'utf8')
 	, out = data.replace(/(@(version|date|author|license|stability)\s+).*/g, function(all, match, tag) {
@@ -271,7 +272,7 @@ function buildBundle() {
 
 	} else {
 		fs.mkdirSync(BUILD_ROOT)
-	} 
+	}
 	// get list of hashs
 	exec('git log --format=%H -6', function (err, out, stderr) {
 		console.log(out.split(/\s+/))
@@ -280,14 +281,16 @@ function buildBundle() {
 }
 
 function buildAll() {
-	var min = Object.keys(conf.buildman || {})
+	var bm = conf.buildman || {}
+	var min = Object.keys(bm)
 
-	if (conf.readmeFilename) update_readme(conf.readmeFilename)
+	if (conf.readmeFilename) updateReadme(conf.readmeFilename)
+	if (conf.main && !bm[conf.main]) updateReadme(conf.main)
 
 	min.forEach(function(output) {
 		if (map[file]) return
 
-		var file = conf.buildman[output]
+		var file = bm[output]
 		if (typeof file == "string") file = [file]
 		if (Array.isArray(file)) file = { input: file }
 
@@ -295,13 +298,13 @@ function buildAll() {
 
 		switch (output.split(".").pop()) {
 		case "js":
-			min_js(file);
+			minJs(file);
 			break;
 		case "html":
-			min_html(file);
+			minHtml(file);
 			break;
 		case "css":
-			min_css(file);
+			minCss(file);
 			break;
 		default:
 			console.error("Unknown type "+output)
@@ -318,9 +321,9 @@ function invalidTarget(name) {
 if (module.parent) {
 	// Used as module
 
-	exports.min_js = min_js
-	exports.min_html = min_html
-	exports.min_css = min_css
+	exports.minJs = minJs
+	exports.minHtml = minHtml
+	exports.minCss = minCss
 } else {
 	// executed as standalone
 
