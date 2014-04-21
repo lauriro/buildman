@@ -251,9 +251,10 @@ var translate = {
 }
 
 
-
+var updatedReadmes = {}
 function updateReadme(file) {
-	if (!fs.existsSync(file)) return
+	if (!fs.existsSync(file) || updatedReadmes[file]) return
+	updatedReadmes[file] = true
 	console.log("# Update readme: " + file)
 	var data = fs.readFileSync(file, 'utf8')
 	, out = data.replace(/(@(version|date|author|license|stability)\s+).*/g, function(all, match, tag) {
