@@ -1,6 +1,6 @@
 
-    @version    0.2.0
-    @date       2014-04-20
+    @version    0.2.2
+    @date       2014-04-21
     @stability  1 - Experimental
 
 

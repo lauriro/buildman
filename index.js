@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.2.0
-* @date     2014-04-20
+* @version  0.2.2
+* @date     2014-04-21
 * @license  MIT License
 */
 
@@ -61,9 +61,9 @@ function minJs(args, next) {
 		return fs.readFileSync(name, 'utf8')
 	}).join('\n')
 
-	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/\\*\\* (?="+args.toggle + ")", "g"), "/*")
+	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/\\*\\* (?="+args.toggle + ")", "g"), "/*** ")
 
-	if (args.input.length > 1) {
+	if (args.devel) {
 		fs.writeFileSync(args.output.replace('.js', '-src.js'), banner + fileString);
 	}
 
