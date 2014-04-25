@@ -9,7 +9,7 @@
 
 
 
-var undef
+var gm, undef
 , BUILD_ROOT = "public/b"
 , CONF_FILE  = process.env.PWD + '/package.json'
 
@@ -181,12 +181,18 @@ function minHtml(args, next) {
 
 }
 
+function normalizePath(path) {
+	for (;path != (path = path.replace(/[^/]*[^.]\/\.\.\/|\.\//, "")););
+	return path
+}
+
 function cssImport(str, path, root) {
 	if (path)
 		str = str.replace(/url\(['"]?/g, "$&"+path)
 
 	return str.replace(/@import\s+url\((['"]?)(.+?)\1\);*/g, function(_, quote, fileName) {
 		var file = fs.readFileSync(root + fileName, 'utf8')
+
 		return cssImport(file, fileName.replace(/[^\/]*$/, ""), root)
 	})
 }
@@ -214,8 +220,19 @@ function minCss(args, next) {
 			})
 			break;
 		case "sprite":
-			line = line.replace(/url\((['"]?)(.+?)\1\)/g, function(_, quote, fileName) {
+			if (!gm) try {
+				gm = require("gm")
+			} catch (e) {
+				console.log("# Please install optional module gm for sprites")
+				process.exit(1)
+			}
+
+			line = line.replace(/url\((['"]?)(.+?)\1\)([^)]*)/g, function(_, quote, fileName, pos) {
 				return 'url("' + param+'.'+fileName.split(".").pop()+'")'
+					+ pos
+						.replace(/px 0px/, "px -"+1+"px")
+						.replace(/\btop\b/, "-"+1+"px")
+// 				    -e "s/)/) 0px -${pos}px/"
 			})
 			break;
 		}
@@ -234,8 +251,12 @@ function minCss(args, next) {
 	.replace(/;*}/g, "}\n")
 
 	// Use CSS shorthands
-	out = out.replace(/([^0-9])-?0(px|em|%|in|cm|mm|pc|pt|ex)/g, "$10")
+	out = out
+	.replace(/([^0-9])-?0(px|em|%|in|cm|mm|pc|pt|ex)/g, "$10")
 	.replace(/:0 0( 0 0)?(;|})/g, ":0$2")
+	.replace(/url\("(.+?)"/g, function(_, file) {
+		return 'url("' + normalizePath(file) + '"'
+	})
 	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
 	.replace(/([ :,])0\.([0-9]+)/g, "$1.$2")
 

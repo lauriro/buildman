@@ -12,13 +12,14 @@ button::-moz-focus-inner,input::-moz-focus-inner{padding:0;border:0}
 .frame{position:fixed;top:10px;left:10px;right:10px;bottom:10px}
 .frame1{background:url("data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEUAAAALAAAAAABAAEAAAICRAEAOw==")}
 .frame2{background:url(theme/px.gif)}
+.frame3{background:url(px.gif)}
 .bg1,.bg2,.bg3,.sprite1,.sprite2,.sprite3{height:42px;width:42px;display:block;float:left;margin:0;padding:0;border:1px solid black}
 .bg1{background:url(theme/bg1.png) no-repeat right top transparent}
-.sprite1{background:url(v.png) no-repeat right 0 transparent}
-.sprite2{background:url(v.png) repeat-x 0 -42px}
+.sprite1{background:url(theme/bg1.png) no-repeat right top transparent}
+.sprite2{background:url(theme/bg2.png) repeat-x 0 0}
 .bg2{background:url(theme/bg2.png) repeat-x 0 0}
 .sprite3{background:url(theme/bg1.png)}
-.bg3{background:url(v.png) repeat-x 0 0}
-.ico1{background:url(i.png) no-repeat left 0}
-.ico2{background:url(i.png) no-repeat left -32px}
+.bg3{background:url(theme/bg1.png) repeat-x 0 0}
+.ico1{background:url(theme/ico1.png) no-repeat left top}
+.ico2{background:url(theme/ico2.png) no-repeat left top}
 b{color:red;background:none;content:"\00a0";border-color:transparent #abc transparent transparent}

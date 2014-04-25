@@ -49,7 +49,7 @@ describe("buildman").
 				return ""+fs.readFileSync("tests/test-min.html")
 			}
 		).
-	it( "should minimize css", {skip: "Not completed"} ).
+	it( "should minimize css", {_skip: "Not completed"} ).
 		run(function(){
 			rm("tests/css/css-min.css")
 			buildman.minCss({

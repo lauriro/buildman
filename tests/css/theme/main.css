@@ -12,6 +12,9 @@
 .frame2 {
 	background: url("px.gif");
 }
+.frame3 {
+	background: url("../px.gif");
+}
 
 .bg1, .bg2, .bg3, .sprite1, .sprite2, .sprite3 {
 	height: 42px;
@@ -28,11 +31,11 @@
 }
 
 .sprite1 {
-	background: url("bg1.png") no-repeat right top transparent; /*! sprite v */
+	background: url("bg1.png") no-repeat right top transparent; /*! _sprite v */
 }
 
 .sprite2 {
-	background: url("bg2.png") repeat-x 0px 0px; /*! sprite v */
+	background: url("bg2.png") repeat-x 0px 0px; /*! _sprite v */
 }
 
 .bg2 {
@@ -44,14 +47,14 @@
 }
 
 .bg3 {
-	background: url("bg1.png") repeat-x 0px 0px; /*! sprite v */
+	background: url("bg1.png") repeat-x 0px 0px; /*! _sprite v */
 }
 
 .ico1 {
-	background: url("ico1.png") no-repeat left top; /*! sprite i */
+	background: url("ico1.png") no-repeat left top; /*! _sprite i */
 }
 
 .ico2 {
-	background: url("ico2.png") no-repeat left top; /*! sprite i */
+	background: url("ico2.png") no-repeat left top; /*! _sprite i */
 }
 

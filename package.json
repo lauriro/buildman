@@ -1,6 +1,6 @@
 {
   "name": "buildman",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "stability": 1,
   "license": "MIT",
   "author": "Lauri Rooden <lauri@rooden.ee>",
@@ -26,5 +26,8 @@
   },
   "buildman": {
     "min.js": "index.js"
+  },
+  "optionalDependencies": {
+    "gm": "^1.14.2"
   }
 }
