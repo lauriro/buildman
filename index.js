@@ -2,7 +2,7 @@
 
 
 /*
-* @version  0.2.4
+* @version  0.2.6
 * @date     2014-05-23
 * @license  MIT License
 */
@@ -18,6 +18,16 @@ var fs = require('fs')
 , conf = require( CONF_FILE ) || {}
 
 
+var translate = {
+	// http://nodejs.org/api/documentation.html
+	stability: "0 - Deprecated,1 - Experimental,2 - Unstable,3 - Stable,4 - API Frozen,5 - Locked".split(","),
+	// https://spdx.org/licenses/
+	license: require("./all-licenses.json"),
+	date: new Date().toISOString().split("T")[0]
+}
+
+
+var updatedReadmes = {}
 
 function prepareOptions(args, next) {
 	// console.log("prepareOptions", args)
@@ -140,6 +150,7 @@ function minHtml(args, next) {
 	.replace(/<!--.*?-->/g, '')
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file){
 		if (exclude.indexOf(file) == -1) {
+			file = replace[file] || file
 			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
 				var bs = fs.readFileSync(root + file, "utf8")
 				return "\f<script>" + bs.trim() + "</script>"
@@ -154,7 +165,6 @@ function minHtml(args, next) {
 				file = squash.file
 			} else {
 				squash = null
-				file = replace[file] || file
 			}
 			var arr = deferRe.test(_) ? deferScripts : scripts
 			if (arr.indexOf(file) == -1) arr.push(file)
@@ -176,13 +186,16 @@ function minHtml(args, next) {
 			_ = _.replace(file, replace[file])
 			file = replace[file]
 		}
-		if (inline.indexOf(file) != -1) {
+		if (inlineRe.test(_) || inline.indexOf(file) != -1) {
+			//console.log("# read file " + root + file)
 			var bs = fs.readFileSync(root + file, "utf8")
-			return "<style>" + bs + "</style>"
+			//console.log("# got " + bs)
+			return "<style>" + bs.trim() + "</style>"
 		}
 		return _
 	})
 	.replace(/\f+/, function(){
+		if (!args.bootstrap) return ""
 		var bs = fs.readFileSync(args.bootstrap, 'utf8')
 		.replace("this,[]", "this," + JSON.stringify(scripts) +
 			(deferScripts.length ? ', function(){xhr.load(' + JSON.stringify(deferScripts) + ')}' : "") )
@@ -275,19 +288,10 @@ function minCss(args, next) {
 	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
 	.replace(/([ :,])0\.([0-9]+)/g, "$1.$2")
 
-	fs.writeFile(args.output, out, next);
+	fs.writeFileSync(args.output, out);
+	next && next()
 }
 
-var translate = {
-	// http://nodejs.org/api/documentation.html
-	stability: "0 - Deprecated,1 - Experimental,2 - Unstable,3 - Stable,4 - API Frozen,5 - Locked".split(","),
-	// https://spdx.org/licenses/
-	license: require("./all-licenses.json"),
-	date: new Date().toISOString().split("T")[0]
-}
-
-
-var updatedReadmes = {}
 function updateReadme(file) {
 	if (!fs.existsSync(file) || updatedReadmes[file]) return
 	updatedReadmes[file] = true
