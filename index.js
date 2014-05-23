@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.2.2
-* @date     2014-04-21
+* @version  0.2.4
+* @date     2014-05-23
 * @license  MIT License
 */
 
@@ -20,7 +20,7 @@ var fs = require('fs')
 
 
 function prepareOptions(args, next) {
-	//console.log("prepareOptions", args)
+	// console.log("prepareOptions", args)
 
 
 	// Build on conf changes
@@ -31,6 +31,7 @@ function prepareOptions(args, next) {
 
 	args.input.forEach(function(name, i, arr){
 		if (!fs.existsSync(name)) {
+			// console.log("file " + name + " not found, try to resolve")
 			name = arr[i] = require.resolve(name)
 		}
 		var stat = fs.statSync(name)
@@ -115,7 +116,8 @@ function minJs(args, next) {
 }
 
 function minHtml(args, next) {
-	args.input = [args.template, args.bootstrap]
+	args.input = [args.template]
+	args.bootstrap && args.input.push(args.bootstrap)
 
 
 	var files = fs.readFileSync(args.template, 'utf8')
@@ -125,8 +127,10 @@ function minHtml(args, next) {
 	var deferScripts = []
 	var deferRe = /\bdefer\b/i
 	var squash, squashFiles = []
-	var squashRe = /\bsquash\b/i
+	var squashRe = /\ssquash\s/i
+	var inlineRe = /\sinline\s/i
 	var exclude = args.exclude || []
+	var inline = args.inline || []
 	var replace = args.replace || {}
 
 	var output = files
@@ -136,6 +140,10 @@ function minHtml(args, next) {
 	.replace(/<!--.*?-->/g, '')
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file){
 		if (exclude.indexOf(file) == -1) {
+			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
+				var bs = fs.readFileSync(root + file, "utf8")
+				return "\f<script>" + bs.trim() + "</script>"
+			}
 			if (squashRe.test(_)) {
 				if (!squash) {
 					var out = squashFiles.length.toString(32) + ".js"
@@ -163,9 +171,14 @@ function minHtml(args, next) {
 	output = output
 	// <link rel="stylesheet" type="text/css" href="app.css">
 	//.replace(/<link>/)
-	.replace(/<link[^>]+href="([^>]*?)"[^>]*>/g, function(_, file){
+	.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file){
 		if (replace[file]) {
-			return _.replace(file, replace[file])
+			_ = _.replace(file, replace[file])
+			file = replace[file]
+		}
+		if (inline.indexOf(file) != -1) {
+			var bs = fs.readFileSync(root + file, "utf8")
+			return "<style>" + bs + "</style>"
 		}
 		return _
 	})
@@ -176,6 +189,8 @@ function minHtml(args, next) {
 
 		return '<script>\n'+bs+'</'+'script>'
 	})
+	.replace(/\f+/g, "")
+	.replace(/[\s;]*<\/script>\s*<script>/g, ";")
 
 	fs.writeFile(args.output, output, next);
 

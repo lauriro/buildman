@@ -38,13 +38,17 @@ describe("buildman").
 				replace: {
 					"app.css": "min.css"
 				},
-				output: "tests/test-min.html"	
+				inline: [
+					"inline.css",
+					"inline2.js"
+				],
+				output: "tests/test-min.html"
 			}, this.wait())
 		}).
 		equal(
 			function(){
 				return ""+fs.readFileSync("tests/test-ok.html")
-			}, 
+			},
 			function(){
 				return ""+fs.readFileSync("tests/test-min.html")
 			}
@@ -61,7 +65,7 @@ describe("buildman").
 		equal(
 			function(){
 				return ""+fs.readFileSync("tests/css/css-ok.css")
-			}, 
+			},
 			function(){
 				return ""+fs.readFileSync("tests/css/css-min.css")
 			}
