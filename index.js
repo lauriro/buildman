@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.2.6
-* @date     2014-05-23
+* @version  0.2.7
+* @date     2014-06-03
 * @license  MIT License
 */
 
@@ -29,8 +29,8 @@ var translate = {
 
 var updatedReadmes = {}
 
-function prepareOptions(args, next) {
-	// console.log("prepareOptions", args)
+function notChanged(args, next) {
+	// console.log("notChanged", args)
 
 
 	// Build on conf changes
@@ -59,7 +59,7 @@ function prepareOptions(args, next) {
 function Nop(){}
 
 function minJs(args, next) {
-	if (prepareOptions(args, next)) return
+	if (notChanged(args, next)) return
 
 	var http = require('http')
 	, subDirFileRe = /\//
@@ -176,7 +176,7 @@ function minHtml(args, next) {
 		minJs(obj)
 	})
 
-	if (prepareOptions(args, next)) return
+	if (notChanged(args, next)) return
 
 	output = output
 	// <link rel="stylesheet" type="text/css" href="app.css">
@@ -206,7 +206,6 @@ function minHtml(args, next) {
 	.replace(/[\s;]*<\/script>\s*<script>/g, ";")
 
 	fs.writeFile(args.output, output, next);
-
 }
 
 function normalizePath(path) {
@@ -227,7 +226,7 @@ function cssImport(str, path, root) {
 
 function minCss(args, next) {
 
-	if (prepareOptions(args, next)) return
+	if (notChanged(args, next)) return
 
 	var root = args.output.replace(/[^\/]*$/, "")
 
@@ -293,7 +292,7 @@ function minCss(args, next) {
 }
 
 function updateReadme(file) {
-	if (!fs.existsSync(file) || updatedReadmes[file]) return
+	if (!file || !fs.existsSync(file) || updatedReadmes[file]) return
 	updatedReadmes[file] = true
 	console.log("# Update readme: " + file)
 	var data = fs.readFileSync(file, 'utf8')
@@ -322,15 +321,11 @@ function buildBundle() {
 	exec('git log --format=%H -6', function (err, out, stderr) {
 		console.log(out.split(/\s+/))
 	})
-
 }
 
 function buildAll() {
 	var bm = conf.buildman || {}
 	var min = Object.keys(bm)
-
-	if (conf.readmeFilename) updateReadme(conf.readmeFilename)
-	if (conf.main && !bm[conf.main]) updateReadme(conf.main)
 
 	min.forEach(function(output) {
 		if (map[file]) return
@@ -356,6 +351,8 @@ function buildAll() {
 		}
 	})
 
+	updateReadme(conf.readmeFilename)
+	updateReadme(conf.main)
 }
 
 
