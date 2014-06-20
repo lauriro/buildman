@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.2.7
-* @date     2014-06-03
+* @version  0.2.8
+* @date     2014-06-20
 * @license  MIT License
 */
 
@@ -147,7 +147,7 @@ function minHtml(args, next) {
 	.replace(/\n\s*\n/g, '\n')
 	.replace(/\t/g, '  ')
 	.replace(/\s+</g, '<')
-	.replace(/<!--.*?-->/g, '')
+	.replace(/<!--[\s\S]*?-->/g, '')
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file){
 		if (exclude.indexOf(file) == -1) {
 			file = replace[file] || file
@@ -204,6 +204,8 @@ function minHtml(args, next) {
 	})
 	.replace(/\f+/g, "")
 	.replace(/[\s;]*<\/script>\s*<script>/g, ";")
+
+	if (args.manifest) output = output.replace(/<html\b/, '$& manifest="' + args.manifest + '"')
 
 	fs.writeFile(args.output, output, next);
 }
@@ -286,6 +288,9 @@ function minCss(args, next) {
 	})
 	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
 	.replace(/([ :,])0\.([0-9]+)/g, "$1.$2")
+
+	//TODO:fonts
+	//http://stackoverflow.com/questions/17664717/most-efficient-webfont-configuration-with-html5-appcache
 
 	fs.writeFileSync(args.output, out);
 	next && next()

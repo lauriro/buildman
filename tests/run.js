@@ -34,6 +34,7 @@ describe("buildman").
 			rm("tests/test-min.html")
 			buildman.minHtml({
 				template: "tests/test.html",
+				manifest: "x.appcache",
 				bootstrap: "tests/test-min.js",
 				replace: {
 					"app.css": "min.css"
