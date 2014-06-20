@@ -2,7 +2,7 @@
 
 
 /*
-* @version  0.2.8
+* @version  0.2.9
 * @date     2014-06-20
 * @license  MIT License
 */
@@ -11,14 +11,12 @@
 
 var gm, undef
 , BUILD_ROOT = "public/b"
-, CONF_FILE  = process.env.PWD + '/package.json'
-
-var fs = require('fs')
-, exec = require('child_process').exec
+, CONF_FILE  = process.env.PWD + "/package.json"
+, fs = require("fs")
+, exec = require("child_process").exec
 , conf = require( CONF_FILE ) || {}
-
-
-var translate = {
+, updatedReadmes = {}
+, translate = {
 	// http://nodejs.org/api/documentation.html
 	stability: "0 - Deprecated,1 - Experimental,2 - Unstable,3 - Stable,4 - API Frozen,5 - Locked".split(","),
 	// https://spdx.org/licenses/
@@ -27,7 +25,6 @@ var translate = {
 }
 
 
-var updatedReadmes = {}
 
 function notChanged(args, next) {
 	// console.log("notChanged", args)
@@ -61,41 +58,41 @@ function Nop(){}
 function minJs(args, next) {
 	if (notChanged(args, next)) return
 
-	var http = require('http')
+	var http = require("http")
 	, subDirFileRe = /\//
-	, querystring = require('querystring')
+	, querystring = require("querystring")
 	, banner = args.banner ? args.banner + "\n" : ""
 	, fileString = args.input.map(function(name){
 		if (!subDirFileRe.test(name)) {
 			updateReadme(name)
 		}
-		return fs.readFileSync(name, 'utf8')
-	}).join('\n')
+		return fs.readFileSync(name, "utf8")
+	}).join("\n")
 
 	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/\\*\\* (?="+args.toggle + ")", "g"), "/*** ")
 
 	if (args.devel) {
-		fs.writeFileSync(args.output.replace('.js', '-src.js'), banner + fileString);
+		fs.writeFileSync(args.output.replace(".js", "-src.js"), banner + fileString);
 	}
 
 
 	// Build the post string from an object
 	var postData = querystring.stringify({
-		//'compilation_level' : 'ADVANCED_OPTIMIZATIONS',
-		'output_format': 'json',
-		'output_info': ['compiled_code', 'warnings', 'errors', 'statistics'],
-		'js_code' : fileString
+		//"compilation_level" : "ADVANCED_OPTIMIZATIONS",
+		"output_format": "json",
+		"output_info": ["compiled_code", "warnings", "errors", "statistics"],
+		"js_code" : fileString
 	});
 
 
 	// An object of options to indicate where to post to
 	var postOptions = {
-		host: 'closure-compiler.appspot.com',
-		path: '/compile',
-		method: 'POST',
+		host: "closure-compiler.appspot.com",
+		path: "/compile",
+		method: "POST",
 		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-			'Content-Length': postData.length
+			"Content-Type": "application/x-www-form-urlencoded",
+			"Content-Length": postData.length
 		}
 	};
 
@@ -103,11 +100,11 @@ function minJs(args, next) {
 	// Set up the request
 	var postReq = http.request(postOptions, function(res) {
 		var text = ""
-		res.setEncoding('utf8');
-		res.on('data', function (chunk) {
+		res.setEncoding("utf8");
+		res.on("data", function (chunk) {
 			text += chunk
 		});
-		res.on('end', function(){
+		res.on("end", function(){
 			try {
 				var json = JSON.parse(text)
 				fs.writeFile(args.output, banner + json.compiledCode, next||Nop);
@@ -130,7 +127,7 @@ function minHtml(args, next) {
 	args.bootstrap && args.input.push(args.bootstrap)
 
 
-	var files = fs.readFileSync(args.template, 'utf8')
+	var files = fs.readFileSync(args.template, "utf8")
 	var root = args.template.replace(/[^\/]+$/, "")
 
 	var scripts = []
@@ -144,11 +141,11 @@ function minHtml(args, next) {
 	var replace = args.replace || {}
 
 	var output = files
-	.replace(/\n\s*\n/g, '\n')
-	.replace(/\t/g, '  ')
-	.replace(/\s+</g, '<')
-	.replace(/<!--[\s\S]*?-->/g, '')
-	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file){
+	.replace(/\n\s*\n/g, "\n")
+	.replace(/\t/g, "  ")
+	.replace(/\s+</g, "<")
+	.replace(/<!--[\s\S]*?-->/g, "")
+	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file) {
 		if (exclude.indexOf(file) == -1) {
 			file = replace[file] || file
 			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
@@ -169,7 +166,7 @@ function minHtml(args, next) {
 			var arr = deferRe.test(_) ? deferScripts : scripts
 			if (arr.indexOf(file) == -1) arr.push(file)
 		}
-		return '\f'
+		return "\f"
 	})
 
 	squashFiles.forEach(function(obj){
@@ -196,16 +193,22 @@ function minHtml(args, next) {
 	})
 	.replace(/\f+/, function(){
 		if (!args.bootstrap) return ""
-		var bs = fs.readFileSync(args.bootstrap, 'utf8')
+		var bs = fs.readFileSync(args.bootstrap, "utf8")
 		.replace("this,[]", "this," + JSON.stringify(scripts) +
-			(deferScripts.length ? ', function(){xhr.load(' + JSON.stringify(deferScripts) + ')}' : "") )
+			(deferScripts.length ? ", function(){xhr.load(" + JSON.stringify(deferScripts) + ")}" : "") )
 
-		return '<script>\n'+bs+'</'+'script>'
+		return "<script>\n" + bs + "</script>"
 	})
 	.replace(/\f+/g, "")
-	.replace(/[\s;]*<\/script>\s*<script>/g, ";")
+	//This breakes code when haml followed by javascript
+	//.replace(/[\s;]*<\/script>\s*<script>/g, ";")
 
-	if (args.manifest) output = output.replace(/<html\b/, '$& manifest="' + args.manifest + '"')
+	if (args.manifest) {
+		console.log("# Update manifest: " + args.manifest)
+		output = output.replace(/<html\b/, '$& manifest="' + args.manifest + '"')
+		var manifestFile = fs.readFileSync(root + args.manifest, "utf8")
+		fs.writeFileSync(root + args.manifest, manifestFile.replace(/#.+$/m, "# " + new Date().toISOString()));
+	}
 
 	fs.writeFile(args.output, output, next);
 }
@@ -220,7 +223,7 @@ function cssImport(str, path, root) {
 		str = str.replace(/url\(['"]?/g, "$&"+path)
 
 	return str.replace(/@import\s+url\((['"]?)(.+?)\1\);*/g, function(_, quote, fileName) {
-		var file = fs.readFileSync(root + fileName, 'utf8')
+		var file = fs.readFileSync(root + fileName, "utf8")
 
 		return cssImport(file, fileName.replace(/[^\/]*$/, ""), root)
 	})
@@ -245,7 +248,7 @@ function minCss(args, next) {
 		case "data-uri":
 			line = line.replace(/url\((['"]?)(.+?)\1\)/g, function(_, quote, fileName) {
 				var str = fs.readFileSync(root + fileName, "base64")
-				return 'url("data:image/' + fileName.split(".").pop() + ';base64,'+str+'")'
+				return 'url("data:image/' + fileName.split(".").pop() + ";base64,"+str+'")'
 			})
 			break;
 		case "sprite":
@@ -257,7 +260,7 @@ function minCss(args, next) {
 			}
 
 			line = line.replace(/url\((['"]?)(.+?)\1\)([^)]*)/g, function(_, quote, fileName, pos) {
-				return 'url("' + param+'.'+fileName.split(".").pop()+'")'
+				return 'url("' + param+"."+fileName.split(".").pop()+'")'
 					+ pos
 						.replace(/px 0px/, "px -"+1+"px")
 						.replace(/\btop\b/, "-"+1+"px")
@@ -300,13 +303,13 @@ function updateReadme(file) {
 	if (!file || !fs.existsSync(file) || updatedReadmes[file]) return
 	updatedReadmes[file] = true
 	console.log("# Update readme: " + file)
-	var data = fs.readFileSync(file, 'utf8')
+	var data = fs.readFileSync(file, "utf8")
 	, out = data.replace(/(@(version|date|author|license|stability)\s+).*/g, function(all, match, tag) {
 		tag = translate[tag] ? translate[tag][conf[tag]] || translate[tag] : conf[tag]
 		return tag ? match + tag : all
 	})
 
-	if (data != out) fs.writeFileSync(file, out, 'utf8')
+	if (data != out) fs.writeFileSync(file, out, "utf8")
 }
 
 var map = {
@@ -323,7 +326,7 @@ function buildBundle() {
 		fs.mkdirSync(BUILD_ROOT)
 	}
 	// get list of hashs
-	exec('git log --format=%H -6', function (err, out, stderr) {
+	exec("git log --format=%H -6", function (err, out, stderr) {
 		console.log(out.split(/\s+/))
 	})
 }
