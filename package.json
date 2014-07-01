@@ -1,6 +1,6 @@
 {
   "name": "buildman",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "stability": 1,
   "license": "MIT",
   "author": "Lauri Rooden <lauri@rooden.ee>",
@@ -14,10 +14,7 @@
     "build": "node index.js --all",
     "test": "node tests/run.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/lauriro/buildman.git"
-  },
+  "repository": "git://github.com/lauriro/buildman.git",
   "bugs": {
     "url": "https://github.com/lauriro/buildman/issues"
   },

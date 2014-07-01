@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.2.9
-* @date     2014-06-20
+* @version  0.2.10
+* @date     2014-07-01
 * @license  MIT License
 */
 
@@ -27,14 +27,10 @@ var gm, undef
 
 
 function notChanged(args, next) {
-	// console.log("notChanged", args)
-
-
 	// Build on conf changes
 	var newest = fs.statSync(CONF_FILE).mtime
 
 	if (typeof args.input == "string") args.input = [args.input]
-
 
 	args.input.forEach(function(name, i, arr){
 		if (!fs.existsSync(name)) {
