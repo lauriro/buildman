@@ -17,7 +17,8 @@ describe("buildman").
 				input: ["dummy", "tests/toggle.js"],
 				toggle: "abc|123",
 				banner: "/*!banner*/",
-				output: "tests/test-min.js"
+				output: "tests/test-min.js",
+				sourceMap: "tests/test-min.js.map"
 			}, this.wait() )
 		}).
 		equal(
@@ -27,6 +28,14 @@ describe("buildman").
 			},
 			function(){
 				return ""+fs.readFileSync("tests/test-min.js")
+			}
+		).
+		equal(
+			function(){
+				return ""+fs.readFileSync("tests/test-min.js.map")
+			},
+			function(){
+				return ""+fs.readFileSync("tests/test-min.js.map.ok")
 			}
 		).
 	it( "should minimize html" ).

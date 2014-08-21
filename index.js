@@ -2,7 +2,7 @@
 
 
 /*
-* @version  0.2.12
+* @version  0.2.13
 * @date     2014-08-21
 * @license  MIT License
 */
@@ -69,6 +69,9 @@ function minJs(args, next) {
 
 	function outputDone() {
 		console.log("# compile DONE " + args.output)
+		if (args.sourceMap) {
+			output.write("//# sourceMappingURL="+args.sourceMap+"\n")
+		}
 		output.end()
 		if (next) next()
 	}
@@ -83,7 +86,11 @@ function minJs(args, next) {
 
 	function compileLocal() {
 		console.log("# compileLocal START " + args.output)
-		var closure = spawn("closure")
+		var closure = spawn("closure",
+			args.sourceMap ?
+			["--create_source_map", args.sourceMap, "--source_map_format", "V3"] :
+			[]
+		)
 		closure.on("close", outputDone)
 
 		closure.stdout.pipe(output, { end: false })
@@ -93,6 +100,7 @@ function minJs(args, next) {
 
 	function compileOnline() {
 		console.log("# compileOnline START " + args.output)
+		args.sourceMap = false // Online compiler does not support sourceMap
 		var postData = querystring.stringify(
 			{ "output_format": "json"
 			//, "compilation_level" : "ADVANCED_OPTIMIZATIONS"
