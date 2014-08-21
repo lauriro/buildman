@@ -24,7 +24,7 @@ describe("buildman").
 			function(){
 				console.log("# run 3")
 				return ""+fs.readFileSync("tests/test-ok.js")
-			}, 
+			},
 			function(){
 				return ""+fs.readFileSync("tests/test-min.js")
 			}

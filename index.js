@@ -2,7 +2,7 @@
 
 
 /*
-* @version  0.2.11
+* @version  0.2.12
 * @date     2014-08-21
 * @license  MIT License
 */
@@ -119,12 +119,11 @@ function minJs(args, next) {
 				try {
 					var json = JSON.parse(text)
 					output.write(json.compiledCode + "\n")
-					outputDone()
-					if (!json.compiledCode) console.log(json)
 				} catch (e) {
-					console.error(text)
+					console.error("ERROR:", text)
 					throw "Invalid response"
 				}
+				outputDone()
 			})
 		})
 
@@ -175,6 +174,7 @@ function minHtml(args, next) {
 					squash = { input:[], file: out, output: root + out }
 					squashFiles.push(squash)
 				}
+				args.input.push(root + file)
 				squash.input.push(root + file)
 				file = squash.file
 			} else {
@@ -186,48 +186,59 @@ function minHtml(args, next) {
 		return "\f"
 	})
 
-	squashFiles.forEach(function(obj){
-		minJs(obj)
-	})
-
 	if (notChanged(args, next)) return
 
-	output = output
-	// <link rel="stylesheet" type="text/css" href="app.css">
-	//.replace(/<link>/)
-	.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file){
-		if (replace[file]) {
-			_ = _.replace(file, replace[file])
-			file = replace[file]
-		}
-		if (inlineRe.test(_) || inline.indexOf(file) != -1) {
-			//console.log("# read file " + root + file)
-			var bs = fs.readFileSync(root + file, "utf8")
-			//console.log("# got " + bs)
-			return "<style>" + bs.trim() + "</style>"
-		}
-		return _
-	})
-	.replace(/\f+/, function(){
-		if (!args.bootstrap) return ""
-		var bs = fs.readFileSync(args.bootstrap, "utf8")
-		.replace("this,[]", "this," + JSON.stringify(scripts) +
-			(deferScripts.length ? ", function(){xhr.load(" + JSON.stringify(deferScripts) + ")}" : "") )
-
-		return "<script>\n" + bs + "</script>"
-	})
-	.replace(/\f+/g, "")
-	//This breakes code when haml followed by javascript
-	//.replace(/[\s;]*<\/script>\s*<script>/g, ";")
-
-	if (args.manifest) {
-		console.log("# Update manifest: " + args.manifest)
-		output = output.replace(/<html\b/, '$& manifest="' + args.manifest + '"')
-		var manifestFile = fs.readFileSync(root + args.manifest, "utf8")
-		fs.writeFileSync(root + args.manifest, manifestFile.replace(/#.+$/m, "# " + new Date().toISOString()));
+	var pending = squashFiles.length
+	function fileDone() {
+		if (--pending == 0) writeOutput()
 	}
 
-	fs.writeFile(args.output, output, next);
+	if (pending) {
+		squashFiles.forEach(function(obj) {
+			minJs(obj, fileDone)
+		})
+	} else {
+		writeOutput()
+	}
+
+	function writeOutput() {
+		output = output
+		// <link rel="stylesheet" type="text/css" href="app.css">
+		//.replace(/<link>/)
+		.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file){
+			if (replace[file]) {
+				_ = _.replace(file, replace[file])
+				file = replace[file]
+			}
+			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
+				//console.log("# read file " + root + file)
+				var bs = fs.readFileSync(root + file, "utf8")
+				//console.log("# got " + bs)
+				return "<style>" + bs.trim() + "</style>"
+			}
+			return _
+		})
+		.replace(/\f+/, function(){
+			if (!args.bootstrap) return ""
+			var bs = fs.readFileSync(args.bootstrap, "utf8")
+			.replace("this,[]", "this," + JSON.stringify(scripts) +
+				(deferScripts.length ? ", function(){xhr.load(" + JSON.stringify(deferScripts) + ")}" : "") )
+
+			return "<script>\n" + bs + "</script>"
+		})
+		.replace(/\f+/g, "")
+		//This breakes code when haml followed by javascript
+		//.replace(/[\s;]*<\/script>\s*<script>/g, ";")
+
+		if (args.manifest) {
+			console.log("# Update manifest: " + args.manifest)
+			var manifestFile = fs.readFileSync(root + args.manifest, "utf8")
+			fs.writeFile(root + args.manifest, manifestFile.replace(/#.+$/m, "# " + new Date().toISOString()));
+			output = output.replace(/<html\b/, '$& manifest="' + args.manifest + '"')
+		}
+
+		fs.writeFile(args.output, output, next);
+	}
 }
 
 function normalizePath(path) {
