@@ -86,7 +86,7 @@ function Nop(){}
 
 
 
-/*//** abc
+/*** abc
 var abc = 1
 /*/
 var abc = 0
@@ -96,7 +96,7 @@ var abc = 0
 
 
 //** ABC
-/*//** abc
+/*** abc
 var ABC = 1
 /*/
 var ABC = 0

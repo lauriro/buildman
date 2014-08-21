@@ -2,8 +2,8 @@
 
 
 /*
-* @version  0.2.10
-* @date     2014-07-01
+* @version  0.2.11
+* @date     2014-08-21
 * @license  MIT License
 */
 
@@ -14,6 +14,7 @@ var gm, undef
 , CONF_FILE  = process.env.PWD + "/package.json"
 , fs = require("fs")
 , exec = require("child_process").exec
+, spawn = require("child_process").spawn
 , conf = require( CONF_FILE ) || {}
 , updatedReadmes = {}
 , translate = {
@@ -64,6 +65,13 @@ function minJs(args, next) {
 		}
 		return fs.readFileSync(name, "utf8")
 	}).join("\n")
+	, output = fs.createWriteStream(args.output)
+
+	function outputDone() {
+		console.log("# compile DONE " + args.output)
+		output.end()
+		if (next) next()
+	}
 
 	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/\\*\\* (?="+args.toggle + ")", "g"), "/*** ")
 
@@ -71,50 +79,63 @@ function minJs(args, next) {
 		fs.writeFileSync(args.output.replace(".js", "-src.js"), banner + fileString);
 	}
 
+	output.write(banner)
 
-	// Build the post string from an object
-	var postData = querystring.stringify({
-		//"compilation_level" : "ADVANCED_OPTIMIZATIONS",
-		"output_format": "json",
-		"output_info": ["compiled_code", "warnings", "errors", "statistics"],
-		"js_code" : fileString
-	});
+	function compileLocal() {
+		console.log("# compileLocal START " + args.output)
+		var closure = spawn("closure")
+		closure.on("close", outputDone)
 
+		closure.stdout.pipe(output, { end: false })
+		closure.stderr.pipe(process.stderr)
+		closure.stdin.end(fileString)
+	}
 
-	// An object of options to indicate where to post to
-	var postOptions = {
-		host: "closure-compiler.appspot.com",
-		path: "/compile",
-		method: "POST",
-		headers: {
-			"Content-Type": "application/x-www-form-urlencoded",
-			"Content-Length": postData.length
-		}
-	};
-
-
-	// Set up the request
-	var postReq = http.request(postOptions, function(res) {
-		var text = ""
-		res.setEncoding("utf8");
-		res.on("data", function (chunk) {
-			text += chunk
-		});
-		res.on("end", function(){
-			try {
-				var json = JSON.parse(text)
-				fs.writeFile(args.output, banner + json.compiledCode, next||Nop);
-				if (!json.compiledCode) console.log(json)
-			} catch (e) {
-				console.error(text)
-				throw "Invalid response"
+	function compileOnline() {
+		console.log("# compileOnline START " + args.output)
+		var postData = querystring.stringify(
+			{ "output_format": "json"
+			//, "compilation_level" : "ADVANCED_OPTIMIZATIONS"
+			, "output_info": ["compiled_code", "warnings", "errors", "statistics"]
+			, "js_code" : fileString
+			})
+		, postOptions =
+			{ host: "closure-compiler.appspot.com"
+			, path: "/compile"
+			, method: "POST"
+			, headers:
+				{ "Content-Type": "application/x-www-form-urlencoded"
+				, "Content-Length": postData.length
+				}
 			}
+		, postReq = http.request(postOptions, function(res) {
+			var text = ""
+			res.setEncoding("utf8");
+			res.on("data", function (chunk) {
+				text += chunk
+			});
+			res.on("end", function(){
+				console.log("# compileOnline DONE " + args.output)
+				try {
+					var json = JSON.parse(text)
+					output.write(json.compiledCode + "\n")
+					outputDone()
+					if (!json.compiledCode) console.log(json)
+				} catch (e) {
+					console.error(text)
+					throw "Invalid response"
+				}
+			})
 		})
-	});
 
-	// post the data
-	postReq.write(postData);
-	postReq.end();
+		postReq.end(postData);
+	}
+
+	programExists("closure", function(err) {
+		if (err) return compileOnline()
+
+		compileLocal()
+	})
 
 }
 
@@ -376,6 +397,13 @@ if (module.parent) {
 	for (var i = 2, val; val = process.argv[i++]; ) {
 		;( map[val] || invalidTarget )(val)
 	};
+}
+
+
+
+
+function programExists(name, next) {
+	exec("command -v " + name, next)
 }
 
 
