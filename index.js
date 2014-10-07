@@ -2,7 +2,7 @@
 
 
 /*
-* @version  0.2.16
+* @version  0.2.17
 * @date     2014-10-07
 * @license  MIT License
 */
@@ -18,11 +18,12 @@ var gm, undef
 , spawn = require("child_process").spawn
 , conf = require( CONF_FILE ) || {}
 , updatedReadmes = {}
+, opened = {}
 , translate = {
 	// http://nodejs.org/api/documentation.html
 	stability: "0 - Deprecated,1 - Experimental,2 - Unstable,3 - Stable,4 - API Frozen,5 - Locked".split(","),
 	// https://spdx.org/licenses/
-	license: require(path.resolve("all-licenses.json")),
+	license: require(path.resolve(__dirname, "all-licenses.json")),
 	date: new Date().toISOString().split("T")[0]
 }
 
@@ -64,15 +65,17 @@ function minJs(args, next) {
 		}
 		return readFile(name)
 	}).join("\n")
-	, output = fs.createWriteStream(path.resolve(args.output))
+	, output = opened[args.output] = fs.createWriteStream(path.resolve(args.output))
 
 	function outputDone() {
 		console.log("# compile DONE " + args.output)
 		if (args.sourceMap) {
 			output.write("//# sourceMappingURL="+args.sourceMap+"\n")
 		}
-		output.end()
-		if (next) next()
+		output.end(function() {
+			opened[args.output] = null
+			if (next) next()
+		})
 	}
 
 	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+"+args.toggle + ")", "g"), "/*")
@@ -142,7 +145,6 @@ function minJs(args, next) {
 
 		compileLocal()
 	})
-
 }
 
 
@@ -202,6 +204,11 @@ function minHtml(args, next) {
 	if (notChanged(args, next)) return
 
 	var pending = squashFiles.length
+	if (opened[args.bootstrap]) {
+		pending++
+		opened[args.bootstrap].on("finish", fileDone)
+	}
+
 	function fileDone() {
 		if (--pending == 0) writeOutput()
 	}
