@@ -2,7 +2,7 @@
 
 
 /*
-* @version  0.2.15
+* @version  0.2.16
 * @date     2014-10-07
 * @license  MIT License
 */
@@ -51,7 +51,6 @@ function notChanged(args, next) {
 	console.log("# Build " + args.output)
 }
 
-function Nop(){}
 
 function minJs(args, next) {
 	if (notChanged(args, next)) return
@@ -76,7 +75,7 @@ function minJs(args, next) {
 		if (next) next()
 	}
 
-	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/\\*\\* (?="+args.toggle + ")", "g"), "/*** ")
+	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+"+args.toggle + ")", "g"), "/*")
 
 	if (args.devel) {
 		writeFile(args.output.replace(".js", "-src.js"), banner + fileString)
@@ -225,10 +224,7 @@ function minHtml(args, next) {
 				file = replace[file]
 			}
 			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
-				//console.log("# read file " + root + file)
-				var bs = readFile(root + file)
-				//console.log("# got " + bs)
-				return "<style>" + bs.trim() + "</style>"
+				return "<style>" + readFile(root + file).trim() + "</style>"
 			}
 			return _
 		})
@@ -257,17 +253,15 @@ function minHtml(args, next) {
 }
 
 function normalizePath(p) {
-	//return path.normalize(p)
-	//for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|\.\/|\/(?=\/)/, "")););
-	for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|\.\//, "")););
+	for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|\.\/|\/(?=\/)/, "")););
 	return p
 }
 
 function cssImport(str, path, root) {
 	if (path)
-		str = str.replace(/url\(['"]?/g, "$&"+path)
+		str = str.replace(/url\(['"]?(?!data:)/g, "$&"+path)
 
-	return str.replace(/@import\s+url\((['"]?)(.+?)\1\);*/g, function(_, quote, fileName) {
+	return str.replace(/@import\s+url\((['"]?)(?!data:)(.+?)\1\);*/g, function(_, quote, fileName) {
 		var file = readFile(root + fileName)
 
 		return cssImport(file, fileName.replace(/[^\/]*$/, ""), root)
@@ -331,7 +325,7 @@ function minCss(args, next) {
 	out = out
 	.replace(/([^0-9])-?0(px|em|%|in|cm|mm|pc|pt|ex)/g, "$10")
 	.replace(/:0 0( 0 0)?(;|})/g, ":0$2")
-	.replace(/url\("(.+?)"/g, function(_, file) {
+	.replace(/url\("(?!data:)(.+?)"/g, function(_, file) {
 		return 'url("' + normalizePath(file) + '"'
 	})
 	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
