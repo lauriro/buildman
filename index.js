@@ -78,7 +78,7 @@ function minJs(args, next) {
 		})
 	}
 
-	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+"+args.toggle + ")", "g"), "/*")
+	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+(?:"+args.toggle + "))", "g"), "/*")
 
 	if (args.devel) {
 		writeFile(args.output.replace(".js", "-src.js"), banner + fileString)
