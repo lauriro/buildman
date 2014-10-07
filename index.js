@@ -2,17 +2,18 @@
 
 
 /*
-* @version  0.2.13
-* @date     2014-08-21
+* @version  0.2.14
+* @date     2014-10-07
 * @license  MIT License
 */
 
 
 
 var gm, undef
-, BUILD_ROOT = "public/b"
-, CONF_FILE  = process.env.PWD + "/package.json"
+, path = require("path")
 , fs = require("fs")
+, BUILD_ROOT = path.resolve("b")
+, CONF_FILE = path.resolve("package.json")
 , exec = require("child_process").exec
 , spawn = require("child_process").spawn
 , conf = require( CONF_FILE ) || {}
@@ -21,7 +22,7 @@ var gm, undef
 	// http://nodejs.org/api/documentation.html
 	stability: "0 - Deprecated,1 - Experimental,2 - Unstable,3 - Stable,4 - API Frozen,5 - Locked".split(","),
 	// https://spdx.org/licenses/
-	license: require("./all-licenses.json"),
+	license: require(path.resolve("all-licenses.json")),
 	date: new Date().toISOString().split("T")[0]
 }
 
@@ -34,15 +35,15 @@ function notChanged(args, next) {
 	if (typeof args.input == "string") args.input = [args.input]
 
 	args.input.forEach(function(name, i, arr){
-		if (!fs.existsSync(name)) {
+		if (!fs.existsSync(path.resolve(name))) {
 			// console.log("file " + name + " not found, try to resolve")
 			name = arr[i] = require.resolve(name)
 		}
-		var stat = fs.statSync(name)
+		var stat = fs.statSync(path.resolve(name))
 		if (newest < +stat.mtime) newest = stat.mtime
 	})
 
-	if (fs.existsSync(args.output) && newest < fs.statSync(args.output).mtime) {
+	if (fs.existsSync(path.resolve(args.output)) && newest < fs.statSync(path.resolve(args.output)).mtime) {
 		next && next()
 		return true
 	}
@@ -55,17 +56,16 @@ function Nop(){}
 function minJs(args, next) {
 	if (notChanged(args, next)) return
 
-	var http = require("http")
-	, subDirFileRe = /\//
+	var subDirFileRe = /\//
 	, querystring = require("querystring")
 	, banner = args.banner ? args.banner + "\n" : ""
 	, fileString = args.input.map(function(name){
 		if (!subDirFileRe.test(name)) {
 			updateReadme(name)
 		}
-		return fs.readFileSync(name, "utf8")
+		return readFile(name)
 	}).join("\n")
-	, output = fs.createWriteStream(args.output)
+	, output = fs.createWriteStream(path.resolve(args.output))
 
 	function outputDone() {
 		console.log("# compile DONE " + args.output)
@@ -79,7 +79,7 @@ function minJs(args, next) {
 	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/\\*\\* (?="+args.toggle + ")", "g"), "/*** ")
 
 	if (args.devel) {
-		fs.writeFileSync(args.output.replace(".js", "-src.js"), banner + fileString);
+		writeFile(args.output.replace(".js", "-src.js"), banner + fileString)
 	}
 
 	output.write(banner)
@@ -116,7 +116,7 @@ function minJs(args, next) {
 				, "Content-Length": postData.length
 				}
 			}
-		, postReq = http.request(postOptions, function(res) {
+		, postReq = require("http").request(postOptions, function(res) {
 			var text = ""
 			res.setEncoding("utf8");
 			res.on("data", function (chunk) {
@@ -146,25 +146,31 @@ function minJs(args, next) {
 
 }
 
+
+function readFile(fileName) {
+	return fs.readFileSync(path.resolve(fileName), "utf8")
+}
+
+function writeFile(fileName, content) {
+	fs.writeFileSync(path.resolve(fileName), content, "utf8")
+}
+
 function minHtml(args, next) {
-	args.input = [args.template]
-	args.bootstrap && args.input.push(args.bootstrap)
+	args.input = [ args.template ]
+	if (args.bootstrap) args.input.push(args.bootstrap)
 
 
-	var files = fs.readFileSync(args.template, "utf8")
-	var root = args.template.replace(/[^\/]+$/, "")
+	var squash
+	, squashFiles = []
+	, root = args.template.replace(/[^\/]+$/, "")
+	, scripts = []
+	, deferScripts = []
+	, inlineRe = /\sinline\s/i
+	, exclude = args.exclude || []
+	, inline = args.inline || []
+	, replace = args.replace || {}
 
-	var scripts = []
-	var deferScripts = []
-	var deferRe = /\bdefer\b/i
-	var squash, squashFiles = []
-	var squashRe = /\ssquash\s/i
-	var inlineRe = /\sinline\s/i
-	var exclude = args.exclude || []
-	var inline = args.inline || []
-	var replace = args.replace || {}
-
-	var output = files
+	var output = readFile(args.template)
 	.replace(/\n\s*\n/g, "\n")
 	.replace(/\t/g, "  ")
 	.replace(/\s+</g, "<")
@@ -173,10 +179,10 @@ function minHtml(args, next) {
 		if (exclude.indexOf(file) == -1) {
 			file = replace[file] || file
 			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
-				var bs = fs.readFileSync(root + file, "utf8")
+				var bs = readFile(root + file)
 				return "\f<script>" + bs.trim() + "</script>"
 			}
-			if (squashRe.test(_)) {
+			if (/\ssquash\s/i.test(_)) {
 				if (!squash) {
 					var out = squashFiles.length.toString(32) + ".js"
 					squash = { input:[], file: out, output: root + out }
@@ -188,7 +194,7 @@ function minHtml(args, next) {
 			} else {
 				squash = null
 			}
-			var arr = deferRe.test(_) ? deferScripts : scripts
+			var arr = /\bdefer\b/i.test(_) ? deferScripts : scripts
 			if (arr.indexOf(file) == -1) arr.push(file)
 		}
 		return "\f"
@@ -220,7 +226,7 @@ function minHtml(args, next) {
 			}
 			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
 				//console.log("# read file " + root + file)
-				var bs = fs.readFileSync(root + file, "utf8")
+				var bs = readFile(root + file)
 				//console.log("# got " + bs)
 				return "<style>" + bs.trim() + "</style>"
 			}
@@ -228,7 +234,7 @@ function minHtml(args, next) {
 		})
 		.replace(/\f+/, function(){
 			if (!args.bootstrap) return ""
-			var bs = fs.readFileSync(args.bootstrap, "utf8")
+			var bs = readFile(args.bootstrap)
 			.replace("this,[]", "this," + JSON.stringify(scripts) +
 				(deferScripts.length ? ", function(){xhr.load(" + JSON.stringify(deferScripts) + ")}" : "") )
 
@@ -240,18 +246,21 @@ function minHtml(args, next) {
 
 		if (args.manifest) {
 			console.log("# Update manifest: " + args.manifest)
-			var manifestFile = fs.readFileSync(root + args.manifest, "utf8")
-			fs.writeFile(root + args.manifest, manifestFile.replace(/#.+$/m, "# " + new Date().toISOString()));
+			var manifestFile = readFile(root + args.manifest).replace(/#.+$/m, "# " + new Date().toISOString())
+			writeFile(root + args.manifest, manifestFile)
 			output = output.replace(/<html\b/, '$& manifest="' + args.manifest + '"')
 		}
 
-		fs.writeFile(args.output, output, next);
+		writeFile(args.output, output)
+		next()
 	}
 }
 
-function normalizePath(path) {
-	for (;path != (path = path.replace(/[^/]*[^.]\/\.\.\/|\.\//, "")););
-	return path
+function normalizePath(p) {
+	//return path.normalize(p)
+	//for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|\.\/|\/(?=\/)/, "")););
+	for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|\.\//, "")););
+	return p
 }
 
 function cssImport(str, path, root) {
@@ -259,7 +268,7 @@ function cssImport(str, path, root) {
 		str = str.replace(/url\(['"]?/g, "$&"+path)
 
 	return str.replace(/@import\s+url\((['"]?)(.+?)\1\);*/g, function(_, quote, fileName) {
-		var file = fs.readFileSync(root + fileName, "utf8")
+		var file = readFile(root + fileName)
 
 		return cssImport(file, fileName.replace(/[^\/]*$/, ""), root)
 	})
@@ -283,7 +292,7 @@ function minCss(args, next) {
 		switch (cmd) {
 		case "data-uri":
 			line = line.replace(/url\((['"]?)(.+?)\1\)/g, function(_, quote, fileName) {
-				var str = fs.readFileSync(root + fileName, "base64")
+				var str = fs.readFileSync(path.resolve(root + fileName), "base64")
 				return 'url("data:image/' + fileName.split(".").pop() + ";base64,"+str+'")'
 			})
 			break;
@@ -331,21 +340,21 @@ function minCss(args, next) {
 	//TODO:fonts
 	//http://stackoverflow.com/questions/17664717/most-efficient-webfont-configuration-with-html5-appcache
 
-	fs.writeFileSync(args.output, out);
+	writeFile(args.output, out)
 	next && next()
 }
 
 function updateReadme(file) {
-	if (!file || !fs.existsSync(file) || updatedReadmes[file]) return
+	if (!file || !fs.existsSync(path.resolve(file)) || updatedReadmes[file]) return
 	updatedReadmes[file] = true
 	console.log("# Update readme: " + file)
-	var data = fs.readFileSync(file, "utf8")
+	var data = readFile(file)
 	, out = data.replace(/(@(version|date|author|license|stability)\s+).*/g, function(all, match, tag) {
 		tag = translate[tag] ? translate[tag][conf[tag]] || translate[tag] : conf[tag]
 		return tag ? match + tag : all
 	})
 
-	if (data != out) fs.writeFileSync(file, out, "utf8")
+	if (data != out) writeFile(file, out)
 }
 
 var map = {
@@ -355,6 +364,9 @@ var map = {
 
 
 function buildBundle() {
+	// $ git rev-list --count HEAD
+	// 68
+	// $ git rev-list --count --first-parent HEAD
 
 	if (fs.existsSync(BUILD_ROOT)) {
 
