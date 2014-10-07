@@ -2,7 +2,7 @@
 
 
 /*
-* @version  0.2.14
+* @version  0.2.15
 * @date     2014-10-07
 * @license  MIT License
 */
@@ -252,7 +252,7 @@ function minHtml(args, next) {
 		}
 
 		writeFile(args.output, output)
-		next()
+		if (next) next()
 	}
 }
 
