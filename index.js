@@ -1,11 +1,11 @@
 
 
 
-/*
-* @version  0.2.17
-* @date     2014-10-07
-* @license  MIT License
-*/
+/**
+ * @version  0.2.19
+ * @date     2014-11-11
+ * @license  MIT License
+ */
 
 
 
@@ -318,15 +318,16 @@ function minCss(args, next) {
 	})
 
 
-	out = out.replace(/'/g, '"')
-	.replace(/[\t\n]/g, " ")
-
 	// Remove optional spaces and put each rule to separated line
-	out = out.replace(/ *([,;{}]) */g, "$1")
-	.replace(/^ */g, "")
-	.replace(/: +/g, ":")
-	.replace(/ and\(/g, " and (")
-	.replace(/;*}/g, "}\n")
+	out = out.replace(/(["'])((?:\\?.)*?)\1|[^"']+/g, function(_, q, str) {
+		if (q) return q == "'" && str.indexOf('"') == -1 ? '"' + str + '"' : _
+		return _.replace(/[\t\n]/g, " ")
+		.replace(/ *([,;{}]) */g, "$1")
+		.replace(/^ +|;(?=})/g, "")
+		.replace(/: +/g, ":")
+		.replace(/ and\(/g, " and (")
+		.replace(/}(?!})/g, "}\n")
+	})
 
 	// Use CSS shorthands
 	out = out

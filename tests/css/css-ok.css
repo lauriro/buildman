@@ -7,8 +7,7 @@ button:focus{border-color:#8e9399}
 button::-moz-focus-inner,input::-moz-focus-inner{padding:0;border:0}
 .last_line{display:none !important}
 .is-online{color:red}
-@keyframes blink{to{opacity:.3}
-}
+@keyframes blink{to{opacity:.3}}
 .frame{position:fixed;top:10px;left:10px;right:10px;bottom:10px}
 .frame1{background:url("data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEUAAAALAAAAAABAAEAAAICRAEAOw==")}
 .frame2{background:url(theme/px.gif)}
