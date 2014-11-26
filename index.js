@@ -2,8 +2,8 @@
 
 
 /**
- * @version  0.2.19
- * @date     2014-11-11
+ * @version  0.2.20
+ * @date     2014-11-26
  * @license  MIT License
  */
 
@@ -172,8 +172,9 @@ function minHtml(args, next) {
 	, replace = args.replace || {}
 
 	var output = readFile(args.template)
+	.replace(/[\r\n]+/g, "\n")
 	.replace(/\n\s*\n/g, "\n")
-	.replace(/\t/g, "  ")
+	.replace(/\t/g, " ")
 	.replace(/\s+</g, "<")
 	.replace(/<!--[\s\S]*?-->/g, "")
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file) {
@@ -285,7 +286,9 @@ function minCss(args, next) {
 		return name.slice(root.length)
 	}).join("');@import url('") + "');", "", root);
 
-	out = out.replace(/\/\*[^@!][\s\S]*?\*\//g, "")
+	out = out
+	.replace(/[\r\n]+/g, "\n")
+	.replace(/\/\*[^@!][\s\S]*?\*\//g, "")
 
 	//TODO:sprite
 	//out = out.replace(/url\((['"]?)(.+?)\1\)[; \t]*\/\*!\s*data-uri\s*\*\//g, function(_, quote, fileName) {
