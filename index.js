@@ -30,19 +30,23 @@ var gm, undef
 
 
 function notChanged(args, next) {
-	// Build on conf changes
-	var newest = fs.statSync(CONF_FILE).mtime
+	var newest = args.newest
 
-	if (typeof args.input == "string") args.input = [args.input]
+	if (!newest) {
+		// Build on conf changes
+		newest = fs.statSync(CONF_FILE).mtime
 
-	args.input.forEach(function(name, i, arr) {
-		if (!fs.existsSync(path.resolve(name))) {
-			// console.log("file " + name + " not found, try to resolve")
-			name = arr[i] = require.resolve(name)
-		}
-		var stat = fs.statSync(path.resolve(name))
-		if (newest < +stat.mtime) newest = stat.mtime
-	})
+		if (typeof args.input == "string") args.input = [args.input]
+
+		args.input.forEach(function(name, i, arr) {
+			if (!fs.existsSync(path.resolve(name))) {
+				// console.log("file " + name + " not found, try to resolve")
+				name = arr[i] = require.resolve(name)
+			}
+			var stat = fs.statSync(path.resolve(name))
+			if (newest < +stat.mtime) newest = stat.mtime
+		})
+	}
 
 	if (fs.existsSync(path.resolve(args.output)) && newest < fs.statSync(path.resolve(args.output)).mtime) {
 		next && next()
@@ -268,26 +272,30 @@ function normalizePath(p) {
 	return p
 }
 
-function cssImport(str, path, root) {
-	if (path)
-		str = str.replace(/url\(['"]?(?!data:)/g, "$&" + path)
+function cssImport(args, str, _path) {
+	if (_path)
+		str = str.replace(/url\(['"]?(?!data:)/g, "$&" + _path)
 
 	return str.replace(/@import\s+url\((['"]?)(?!data:)(.+?)\1\);*/g, function(_, quote, fileName) {
-		var file = readFile(root + fileName)
+		var file = readFile(args.root + fileName)
+		, mtime = fs.statSync(path.resolve(args.root + fileName)).mtime
 
-		return cssImport(file, fileName.replace(/[^\/]*$/, ""), root)
+		if (args.newest < +mtime) args.newest = mtime
+
+		return cssImport(args, file, fileName.replace(/[^\/]*$/, ""))
 	})
 }
 
 function minCss(args, next) {
 
+	args.newest = fs.statSync(CONF_FILE).mtime
+	if (!("root" in args)) args.root = args.output.replace(/[^\/]*$/, "")
+
+	var out = cssImport(args, "@import url('" + args.input.map(function(name) {
+		return name.slice(args.root.length)
+	}).join("');@import url('") + "');", "")
+
 	if (notChanged(args, next)) return
-
-	var root = args.output.replace(/[^\/]*$/, "")
-
-	var out = cssImport("@import url('" + args.input.map(function(name) {
-		return name.slice(root.length)
-	}).join("');@import url('") + "');", "", root);
 
 	out = out
 	.replace(/[\r\n]+/g, "\n")
@@ -299,7 +307,7 @@ function minCss(args, next) {
 		switch (cmd) {
 		case "data-uri":
 			line = line.replace(/url\((['"]?)(.+?)\1\)/g, function(_, quote, fileName) {
-				var str = fs.readFileSync(path.resolve(root + fileName), "base64")
+				var str = fs.readFileSync(path.resolve(args.root + fileName), "base64")
 				return 'url("data:image/' + fileName.split(".").pop() + ";base64," + str + '")'
 			})
 			break;
