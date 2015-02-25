@@ -35,7 +35,7 @@ function notChanged(args, next) {
 
 	if (typeof args.input == "string") args.input = [args.input]
 
-	args.input.forEach(function(name, i, arr){
+	args.input.forEach(function(name, i, arr) {
 		if (!fs.existsSync(path.resolve(name))) {
 			// console.log("file " + name + " not found, try to resolve")
 			name = arr[i] = require.resolve(name)
@@ -59,7 +59,7 @@ function minJs(args, next) {
 	var subDirFileRe = /\//
 	, querystring = require("querystring")
 	, banner = args.banner ? args.banner + "\n" : ""
-	, fileString = args.input.map(function(name){
+	, fileString = args.input.map(function(name) {
 		if (!subDirFileRe.test(name)) {
 			updateReadme(name)
 		}
@@ -70,7 +70,7 @@ function minJs(args, next) {
 	function outputDone() {
 		console.log("# compile DONE " + args.output)
 		if (args.sourceMap) {
-			output.write("//# sourceMappingURL="+args.sourceMap+"\n")
+			output.write("//# sourceMappingURL=" + args.sourceMap + "\n")
 		}
 		output.end(function() {
 			opened[args.output] = null
@@ -78,7 +78,7 @@ function minJs(args, next) {
 		})
 	}
 
-	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+(?:"+args.toggle + "))", "g"), "/*")
+	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+(?:" + args.toggle + "))", "g"), "/*")
 
 	if (args.devel) {
 		writeFile(typeof args.devel == "string" ?
@@ -229,7 +229,7 @@ function minHtml(args, next) {
 		output = output
 		// <link rel="stylesheet" type="text/css" href="app.css">
 		//.replace(/<link>/)
-		.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file){
+		.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file) {
 			if (replace[file]) {
 				_ = _.replace(file, replace[file])
 				file = replace[file]
@@ -270,7 +270,7 @@ function normalizePath(p) {
 
 function cssImport(str, path, root) {
 	if (path)
-		str = str.replace(/url\(['"]?(?!data:)/g, "$&"+path)
+		str = str.replace(/url\(['"]?(?!data:)/g, "$&" + path)
 
 	return str.replace(/@import\s+url\((['"]?)(?!data:)(.+?)\1\);*/g, function(_, quote, fileName) {
 		var file = readFile(root + fileName)
@@ -285,7 +285,7 @@ function minCss(args, next) {
 
 	var root = args.output.replace(/[^\/]*$/, "")
 
-	var out = cssImport("@import url('" + args.input.map(function(name){
+	var out = cssImport("@import url('" + args.input.map(function(name) {
 		return name.slice(root.length)
 	}).join("');@import url('") + "');", "", root);
 
@@ -300,7 +300,7 @@ function minCss(args, next) {
 		case "data-uri":
 			line = line.replace(/url\((['"]?)(.+?)\1\)/g, function(_, quote, fileName) {
 				var str = fs.readFileSync(path.resolve(root + fileName), "base64")
-				return 'url("data:image/' + fileName.split(".").pop() + ";base64,"+str+'")'
+				return 'url("data:image/' + fileName.split(".").pop() + ";base64," + str + '")'
 			})
 			break;
 		case "sprite":
@@ -312,11 +312,11 @@ function minCss(args, next) {
 			}
 
 			line = line.replace(/url\((['"]?)(.+?)\1\)([^)]*)/g, function(_, quote, fileName, pos) {
-				return 'url("' + param+"."+fileName.split(".").pop()+'")'
+				return 'url("' + param + "." + fileName.split(".").pop() + '")'
 					+ pos
-						.replace(/px 0px/, "px -"+1+"px")
-						.replace(/\btop\b/, "-"+1+"px")
-// 				    -e "s/)/) 0px -${pos}px/"
+						.replace(/px 0px/, "px -" + 1 + "px")
+						.replace(/\btop\b/, "-" + 1 + "px")
+						// -e "s/)/) 0px -${pos}px/"
 			})
 			break;
 		}
@@ -349,7 +349,7 @@ function minCss(args, next) {
 	//http://stackoverflow.com/questions/17664717/most-efficient-webfont-configuration-with-html5-appcache
 
 	writeFile(args.output, out)
-	next && next()
+	if (next) next()
 }
 
 function updateReadme(file) {
@@ -402,13 +402,13 @@ function buildAll() {
 
 		switch (output.split(".").pop()) {
 		case "js":
-			minJs(file);
+			minJs(file)
 			break;
 		case "html":
-			minHtml(file);
+			minHtml(file)
 			break;
 		case "css":
-			minCss(file);
+			minCss(file)
 			break;
 		default:
 			console.error("Unknown type "+output)
