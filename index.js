@@ -81,7 +81,10 @@ function minJs(args, next) {
 	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+(?:"+args.toggle + "))", "g"), "/*")
 
 	if (args.devel) {
-		writeFile(args.output.replace(".js", "-src.js"), banner + fileString)
+		writeFile(typeof args.devel == "string" ?
+			args.devel :
+			args.output.replace(".js", "-src.js")
+		, banner + fileString)
 	}
 
 	output.write(banner)
