@@ -432,18 +432,22 @@ function invalidTarget(name) {
 	console.error("ERROR: invalid target " + name)
 }
 
+function execute() {
+	for (var i = 2, val; val = process.argv[i++]; ) {
+		;( map[val] || invalidTarget )(val)
+	}
+}
+
 if (module.parent) {
 	// Used as module
 
 	exports.minJs = minJs
 	exports.minHtml = minHtml
 	exports.minCss = minCss
+	exports.execute = execute
 } else {
 	// executed as standalone
-
-	for (var i = 2, val; val = process.argv[i++]; ) {
-		;( map[val] || invalidTarget )(val)
-	};
+	execute()
 }
 
 

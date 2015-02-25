@@ -9,6 +9,7 @@
     "readme"
   ],
   "main": "index.js",
+  "bin": "bin/cmd.js",
   "readmeFilename": "README.md",
   "scripts": {
     "build": "node index.js --all",
