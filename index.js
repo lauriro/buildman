@@ -9,7 +9,7 @@
 
 
 
-var gm, undef
+var gm, undef, fileHashes
 , path = require("path")
 , fs = require("fs")
 , BUILD_ROOT = path.resolve("b")
@@ -39,6 +39,7 @@ function notChanged(args, next) {
 		if (typeof args.input == "string") args.input = [args.input]
 
 		args.input.forEach(function(name, i, arr) {
+			name = name.split("?")[0]
 			if (!fs.existsSync(path.resolve(name))) {
 				// console.log("file " + name + " not found, try to resolve")
 				name = arr[i] = require.resolve(name)
@@ -156,7 +157,7 @@ function minJs(args, next) {
 
 
 function readFile(fileName) {
-	return fs.readFileSync(path.resolve(fileName), "utf8")
+	return fs.readFileSync(path.resolve(fileName.split("?")[0]), "utf8")
 }
 
 function writeFile(fileName, content) {
@@ -164,6 +165,10 @@ function writeFile(fileName, content) {
 }
 
 function minHtml(args, next) {
+	readFileHashes(_minHtml, args, next)
+}
+
+function _minHtml(args, next) {
 	args.input = [ args.template ]
 	if (args.bootstrap) args.input.push(args.bootstrap)
 
@@ -229,6 +234,10 @@ function minHtml(args, next) {
 		writeOutput()
 	}
 
+	function updateFiles(val, key, arr) {
+		arr[key] = normalizePath(val, root)
+	}
+
 	function writeOutput() {
 		output = output
 		// <link rel="stylesheet" type="text/css" href="app.css">
@@ -245,6 +254,9 @@ function minHtml(args, next) {
 		})
 		.replace(/\f+/, function(){
 			if (!args.bootstrap) return ""
+			scripts.forEach(updateFiles)
+			deferScripts.forEach(updateFiles)
+
 			var bs = readFile(args.bootstrap)
 			.replace("this,[]", "this," + JSON.stringify(scripts) +
 				(deferScripts.length ? ", function(){xhr.load(" + JSON.stringify(deferScripts) + ")}" : "") )
@@ -267,8 +279,36 @@ function minHtml(args, next) {
 	}
 }
 
-function normalizePath(p) {
+function readFileHashes(next, args, _next) {
+	if (fileHashes) return next(args, _next)
+	fileHashes = {}
+	// $ git ls-tree -r --abbrev=1 HEAD
+	// 100644 blob 1f537	public/robots.txt
+	// 100644 blob 0230	public/templates/devices.haml
+	// $ git cat-file -p 1f537
+	var data = ""
+	, git = spawn("git", ["ls-tree", "-rz", "--abbrev=1", "HEAD"])
+
+	git.stdout.on("data", function (_data) {
+		data += _data
+	})
+	git.stderr.pipe(process.stderr)
+
+	git.on("close", function (code) {
+		data.split("\0").reduceRight(function(map, line, index) {
+			if (line) {
+				index = line.indexOf("\t")
+				map[line.slice(1 + index)] = line.slice(12, index)
+			}
+			return map
+		}, fileHashes)
+		next(args, _next)
+	})
+}
+
+function normalizePath(p, root) {
 	for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|\.\/|\/(?=\/)/, "")););
+	p = p.replace(/{hash}/g, fileHashes[root + p.split("?")[0]] || "")
 	return p
 }
 
@@ -287,6 +327,10 @@ function cssImport(args, str, _path) {
 }
 
 function minCss(args, next) {
+	readFileHashes(_minCss, args, next)
+}
+
+function _minCss(args, next) {
 
 	args.newest = fs.statSync(CONF_FILE).mtime
 	if (!("root" in args)) args.root = args.output.replace(/[^\/]*$/, "")
@@ -348,7 +392,7 @@ function minCss(args, next) {
 	.replace(/([^0-9])-?0(px|em|%|in|cm|mm|pc|pt|ex)/g, "$10")
 	.replace(/:0 0( 0 0)?(;|})/g, ":0$2")
 	.replace(/url\("(?!data:)(.+?)"/g, function(_, file) {
-		return 'url("' + normalizePath(file) + '"'
+		return 'url("' + normalizePath(file, args.root) + '"'
 	})
 	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
 	.replace(/([ :,])0\.([0-9]+)/g, "$1.$2")
@@ -396,6 +440,10 @@ function buildBundle() {
 }
 
 function buildAll() {
+	readFileHashes(_buildAll)
+}
+
+function _buildAll() {
 	var bm = conf.buildman || {}
 	var min = Object.keys(bm)
 

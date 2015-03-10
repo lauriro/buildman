@@ -27,7 +27,7 @@
 }
 
 .bg1 {
-	background: url("bg1.png") no-repeat right top transparent;
+	background: url("bg1.png?h={hash}") no-repeat right top transparent;
 }
 
 .sprite1 {

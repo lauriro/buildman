@@ -13,7 +13,7 @@ button::-moz-focus-inner,input::-moz-focus-inner{padding:0;border:0}
 .frame2{background:url(theme/px.gif)}
 .frame3{background:url(px.gif)}
 .bg1,.bg2,.bg3,.sprite1,.sprite2,.sprite3{height:42px;width:42px;display:block;float:left;margin:0;padding:0;border:1px solid black}
-.bg1{background:url(theme/bg1.png) no-repeat right top transparent}
+.bg1{background:url("theme/bg1.png?h=0b45") no-repeat right top transparent}
 .sprite1{background:url(theme/bg1.png) no-repeat right top transparent}
 .sprite2{background:url(theme/bg2.png) repeat-x 0 0}
 .bg2{background:url(theme/bg2.png) repeat-x 0 0}
