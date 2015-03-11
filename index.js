@@ -271,7 +271,7 @@ function _minHtml(args, next) {
 			console.log("# Update manifest: " + args.manifest)
 			var manifestFile = readFile(root + args.manifest)
 			.replace(/#.+$/m, "# " + new Date().toISOString())
-			.replace(/^(.*\bh=)[0-9a-f]*\b/gi, function(_, line) {
+			.replace(/^(.*\bh=)[0-9a-f]*\b/gim, function(_, line) {
 				return normalizePath(line + "{hash}", root)
 			})
 			writeFile(root + args.manifest, manifestFile)
