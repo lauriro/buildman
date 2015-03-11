@@ -213,6 +213,9 @@ function _minHtml(args, next) {
 		}
 		return "\f"
 	})
+	.replace(/\b(href|src)="(?!data:)(.+?)"/gi, function(_, tag, file) {
+		return tag + '="' + normalizePath(file, root) + '"'
+	})
 
 	if (notChanged(args, next)) return
 
