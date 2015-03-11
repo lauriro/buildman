@@ -11,6 +11,11 @@
   "main": "index.js",
   "bin": "bin/cmd.js",
   "readmeFilename": "README.md",
+  "files": [
+    "all-licenses.json",
+    "bin",
+    "index.js"
+  ],
   "scripts": {
     "build": "node index.js --all",
     "test": "node tests/run.js"
