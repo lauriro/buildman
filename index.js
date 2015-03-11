@@ -291,7 +291,7 @@ function readFileHashes(next, args, _next) {
 	// 100644 blob 0230	public/templates/devices.haml
 	// $ git cat-file -p 1f537
 	var data = ""
-	, git = spawn("git", ["ls-tree", "-rz", "--abbrev=1", "HEAD"])
+	, git = spawn("git", ["ls-files", "-sz", "--abbrev=1"])
 
 	git.stdout.on("data", function (_data) {
 		data += _data
@@ -302,7 +302,7 @@ function readFileHashes(next, args, _next) {
 		data.split("\0").reduceRight(function(map, line, index) {
 			if (line) {
 				index = line.indexOf("\t")
-				map[line.slice(1 + index)] = line.slice(12, index)
+				map[line.slice(1 + index)] = line.split(" ")[1]
 			}
 			return map
 		}, fileHashes)
