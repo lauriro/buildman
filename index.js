@@ -173,7 +173,7 @@ function _minHtml(args, next) {
 	if (args.bootstrap) args.input.push(args.bootstrap)
 
 
-	var squash
+	var squash, match
 	, squashFiles = []
 	, root = args.template.replace(/[^\/]+$/, "")
 	, scripts = []
@@ -196,9 +196,9 @@ function _minHtml(args, next) {
 				var bs = readFile(root + file)
 				return "\f<script>" + bs.trim() + "</script>"
 			}
-			if (/\ssquash\s/i.test(_)) {
-				if (!squash) {
-					var out = squashFiles.length.toString(32) + ".js?h={hash}"
+			if (match = /\ssquash(?:="([^"]+)"|\b)/i.exec(_)) {
+				if (!squash || match[1] && match[1] != squash.output) {
+					var out = match[1] || squashFiles.length.toString(32) + ".js"
 					squash = { input:[], file: out, output: root + out }
 					squashFiles.push(squash)
 				}
