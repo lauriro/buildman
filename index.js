@@ -70,7 +70,7 @@ function minJs(args, next) {
 		}
 		return readFile(name)
 	}).join("\n")
-	, output = opened[args.output] = fs.createWriteStream(path.resolve(args.output))
+	, output = opened[args.output] = fs.createWriteStream(path.resolve(args.output.split("?")[0]))
 
 	function outputDone() {
 		console.log("# compile DONE " + args.output)
