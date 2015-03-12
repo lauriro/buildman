@@ -161,7 +161,7 @@ function readFile(fileName) {
 }
 
 function writeFile(fileName, content) {
-	fs.writeFileSync(path.resolve(fileName), content, "utf8")
+	fs.writeFileSync(path.resolve(fileName.split("?")[0]), content, "utf8")
 }
 
 function minHtml(args, next) {
@@ -198,7 +198,7 @@ function _minHtml(args, next) {
 			}
 			if (/\ssquash\s/i.test(_)) {
 				if (!squash) {
-					var out = squashFiles.length.toString(32) + ".js"
+					var out = squashFiles.length.toString(32) + ".js?h={hash}"
 					squash = { input:[], file: out, output: root + out }
 					squashFiles.push(squash)
 				}
