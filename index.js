@@ -191,10 +191,12 @@ function _minHtml(args, next) {
 	.replace(/<!--[\s\S]*?-->/g, "")
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file) {
 		if (exclude.indexOf(file) == -1) {
+			var dataIf = /\sdata-if="([^"]+)"/.exec(_)
 			file = replace[file] || file
 			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
-				var bs = readFile(root + file)
-				return "\f<script>" + bs.trim() + "</script>"
+				var bs = readFile(root + file).trim()
+				if (dataIf) bs = "if(" + dataIf[1] + "){" + bs + "}"
+				return "\f<script>" + bs + "</script>"
 			}
 			if (match = /\ssquash(?:="([^"]+)"|\b)/i.exec(_)) {
 				if (!squash || match[1] && match[1] != squash.output) {
@@ -210,6 +212,7 @@ function _minHtml(args, next) {
 			}
 			var arr = /\bdefer\b/i.test(_) ? deferScripts : scripts
 			file = '"' + normalizePath(file, root) + '"'
+			if (dataIf) file = "(" + dataIf[1] + ")&&" + file
 			if (arr.indexOf(file) == -1) arr.push(file)
 		}
 		return "\f"
