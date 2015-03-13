@@ -209,7 +209,7 @@ function _minHtml(args, next) {
 				squash = null
 			}
 			var arr = /\bdefer\b/i.test(_) ? deferScripts : scripts
-			file = normalizePath(file, root)
+			file = '"' + normalizePath(file, root) + '"'
 			if (arr.indexOf(file) == -1) arr.push(file)
 		}
 		return "\f"
@@ -256,8 +256,8 @@ function _minHtml(args, next) {
 			if (!args.bootstrap) return ""
 
 			var bs = readFile(args.bootstrap)
-			.replace("this,[]", "this," + JSON.stringify(scripts) +
-				(deferScripts.length ? ", function(){xhr.load(" + JSON.stringify(deferScripts) + ")}" : "") )
+			.replace("this,[]", "this,[" + scripts + "]" +
+				(deferScripts.length ? ", function(){xhr.load([" + deferScripts + "])}" : "") )
 
 			return "<script>\n" + bs + "</script>"
 		})
