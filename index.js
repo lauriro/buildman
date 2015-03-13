@@ -209,6 +209,7 @@ function _minHtml(args, next) {
 				squash = null
 			}
 			var arr = /\bdefer\b/i.test(_) ? deferScripts : scripts
+			file = normalizePath(file, root)
 			if (arr.indexOf(file) == -1) arr.push(file)
 		}
 		return "\f"
@@ -237,10 +238,6 @@ function _minHtml(args, next) {
 		writeOutput()
 	}
 
-	function updateFiles(val, key, arr) {
-		arr[key] = normalizePath(val, root)
-	}
-
 	function writeOutput() {
 		output = output
 		// <link rel="stylesheet" type="text/css" href="app.css">
@@ -257,8 +254,6 @@ function _minHtml(args, next) {
 		})
 		.replace(/\f+/, function(){
 			if (!args.bootstrap) return ""
-			scripts.forEach(updateFiles)
-			deferScripts.forEach(updateFiles)
 
 			var bs = readFile(args.bootstrap)
 			.replace("this,[]", "this," + JSON.stringify(scripts) +
