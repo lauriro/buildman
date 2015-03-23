@@ -247,7 +247,7 @@ function _minHtml(args, next) {
 		//.replace(/<link>/)
 		.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file) {
 			if (replace[file]) {
-				_ = _.replace(file, replace[file])
+				_ = _.replace(file, normalizePath(replace[file], root))
 				file = replace[file]
 			}
 			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
