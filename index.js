@@ -17,6 +17,7 @@ var gm, undef, fileHashes
 , exec = require("child_process").exec
 , spawn = require("child_process").spawn
 , conf = require( CONF_FILE ) || {}
+, files = conf.buildman || {}
 , updatedReadmes = {}
 , opened = {}
 , translate = {
@@ -449,13 +450,10 @@ function buildAll() {
 }
 
 function _buildAll() {
-	var bm = conf.buildman || {}
-	var min = Object.keys(bm)
-
-	min.forEach(function(output) {
+	Object.keys(files).forEach(function(output) {
 		if (map[file]) return
 
-		var file = bm[output]
+		var file = files[output]
 		if (typeof file == "string") file = [file]
 		if (Array.isArray(file)) file = { input: file }
 
