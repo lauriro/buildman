@@ -177,6 +177,7 @@ function _minHtml(args, next) {
 	var squash, match
 	, squashFiles = []
 	, root = args.template.replace(/[^\/]+$/, "")
+	, rawFiles = []
 	, scripts = []
 	, deferScripts = []
 	, inlineRe = /\sinline\s/i
@@ -211,6 +212,7 @@ function _minHtml(args, next) {
 			} else {
 				squash = null
 			}
+			rawFiles.push(file)
 			var arr = /\bdefer\b/i.test(_) ? deferScripts : scripts
 			file = '"' + normalizePath(file, root) + '"'
 			if (dataIf) file = "(" + dataIf[1] + ")&&" + file
@@ -270,12 +272,39 @@ function _minHtml(args, next) {
 		//.replace(/[\s;]*<\/script>\s*<script>/g, ";")
 
 		if (args.manifest) {
-			console.log("# Update manifest: " + args.manifest)
+			// Files with hashes
+			var res
+			, escapeRe = /[.*+?^=!:${}()|\[\]\/\\]/g
+			, replacedFiles = []
+			, buildedFiles = Object.keys(files)
+
+			buildedFiles.forEach(function(file) {
+				var replace = files[file].replace
+				if (replace) {
+					replace = Object.keys(replace).map(function(key) {
+						return replace[key]
+					})
+					replacedFiles.push.apply(replacedFiles, replace)
+				}
+			})
+
+			console.log("# Update manifest: " + args.manifest, res)
 			var manifestFile = readFile(root + args.manifest)
 			.replace(/#.+$/m, "# " + new Date().toISOString())
-			.replace(/^(.*\bh=)[0-9a-f]*\b/gim, function(_, line) {
-				return normalizePath(line + "{hash}", root)
+
+			replacedFiles
+			.concat(buildedFiles, rawFiles)
+			.filter(function(file, pos, arr) {
+				return file.indexOf("{hash}") != -1 && arr.lastIndexOf(file) == pos
 			})
+			.forEach(function(file) {
+				var reStr = "^("
+				+ file.replace("{hash}", "\f").replace(escapeRe, "\\$&").replace(/\f/g, ")([0-9a-f]+)(")
+				+ ")$"
+				, re = new RegExp(reStr)
+				manifestFile = manifestFile.replace(re, normalizePath(file, root))
+			})
+
 			writeFile(root + args.manifest, manifestFile)
 			output = output.replace(/<html\b/, '$& manifest="' + args.manifest + '"')
 		}
