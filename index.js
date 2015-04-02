@@ -249,6 +249,7 @@ function _minHtml(args, next) {
 		// <link rel="stylesheet" type="text/css" href="app.css">
 		//.replace(/<link>/)
 		.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file) {
+			if (exclude.indexOf(file) > -1) return ""
 			if (replace[file]) {
 				_ = _.replace(file, normalizePath(replace[file], root))
 				file = replace[file]
