@@ -352,7 +352,9 @@ function cssImport(args, str, _path) {
 	if (_path)
 		str = str.replace(/url\(['"]?(?!data:)/g, "$&" + _path)
 
-	return str.replace(/@import\s+url\((['"]?)(?!data:)(.+?)\1\);*/g, function(_, quote, fileName) {
+	return str
+	.replace(/\/\*[^!][\s\S]*?\*\//g, "")
+	.replace(/@import\s+url\((['"]?)(?!data:)(.+?)\1\);*/g, function(_, quote, fileName) {
 		var file = readFile(args.root + fileName)
 		, mtime = fs.statSync(path.resolve(args.root + fileName)).mtime
 
@@ -379,7 +381,6 @@ function _minCss(args, next) {
 
 	out = out
 	.replace(/[\r\n]+/g, "\n")
-	.replace(/\/\*[^@!][\s\S]*?\*\//g, "")
 
 	//TODO:sprite
 	//out = out.replace(/url\((['"]?)(.+?)\1\)[; \t]*\/\*!\s*data-uri\s*\*\//g, function(_, quote, fileName) {
