@@ -274,25 +274,19 @@ function _minHtml(args, next) {
 		//.replace(/[\s;]*<\/script>\s*<script>/g, ";")
 
 		if (args.manifest) {
-			// Files with hashes
-			var res
-			, escapeRe = /[.*+?^=!:${}()|\[\]\/\\]/g
+			console.log("# Update manifest: " + args.manifest)
+			var escapeRe = /[.*+?^=!:${}()|\[\]\/\\]/g
 			, replacedFiles = []
 			, buildedFiles = Object.keys(files)
+			, manifestFile = readFile(root + args.manifest)
+				.replace(/#.+$/m, "# " + new Date().toISOString())
 
 			buildedFiles.forEach(function(file) {
 				var replace = files[file].replace
-				if (replace) {
-					replace = Object.keys(replace).map(function(key) {
-						return replace[key]
-					})
-					replacedFiles.push.apply(replacedFiles, replace)
+				if (replace) for (var key in replace) {
+					replacedFiles.push(replace[key])
 				}
 			})
-
-			console.log("# Update manifest: " + args.manifest, res)
-			var manifestFile = readFile(root + args.manifest)
-			.replace(/#.+$/m, "# " + new Date().toISOString())
 
 			replacedFiles
 			.concat(buildedFiles, rawFiles)
