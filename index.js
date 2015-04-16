@@ -181,6 +181,7 @@ function _minHtml(args, next) {
 	, scripts = []
 	, deferScripts = []
 	, inlineRe = /\sinline\s/i
+	, excludeRe = /\sexclude\s/i
 	, exclude = args.exclude || []
 	, inline = args.inline || []
 	, replace = args.replace || {}
@@ -192,7 +193,7 @@ function _minHtml(args, next) {
 	.replace(/\s+</g, "<")
 	.replace(/<!--[\s\S]*?-->/g, "")
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file) {
-		if (exclude.indexOf(file) == -1) {
+		if (exclude.indexOf(file) == -1 && !excludeRe.test(_)) {
 			var dataIf = /\sdata-if="([^"]+)"/.exec(_)
 			file = replace[file] || file
 			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
@@ -249,7 +250,7 @@ function _minHtml(args, next) {
 		// <link rel="stylesheet" type="text/css" href="app.css">
 		//.replace(/<link>/)
 		.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file) {
-			if (exclude.indexOf(file) > -1) return ""
+			if (exclude.indexOf(file) > -1 || excludeRe.test(_)) return ""
 			if (replace[file]) {
 				_ = _.replace(file, normalizePath(replace[file], root))
 				file = replace[file]
