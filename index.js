@@ -300,10 +300,10 @@ function _minHtml(args, next) {
 				return file.indexOf("{hash}") != -1 && arr.lastIndexOf(file) == pos
 			})
 			.forEach(function(file) {
-				var reStr = "^("
-				+ file.replace("{hash}", "\f").replace(escapeRe, "\\$&").replace(/\f/g, ")([0-9a-f]+)(")
-				+ ")$"
-				, re = new RegExp(reStr)
+				var reStr = "^"
+				+ file.replace("{hash}", "\f").replace(escapeRe, "\\$&").replace(/\f/g, "[0-9a-f]*")
+				+ "$"
+				, re = new RegExp(reStr, "m")
 				manifestFile = manifestFile.replace(re, normalizePath(file, root))
 			})
 
