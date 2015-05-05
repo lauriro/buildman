@@ -37,8 +37,6 @@ function notChanged(args, next) {
 		// Build on conf changes
 		newest = fs.statSync(CONF_FILE).mtime
 
-		if (typeof args.input == "string") args.input = [args.input]
-
 		args.input.forEach(function(name, i, arr) {
 			name = name.split("?")[0]
 			if (!fs.existsSync(path.resolve(name))) {
