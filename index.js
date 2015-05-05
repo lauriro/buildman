@@ -31,22 +31,16 @@ var gm, undef, fileHashes
 
 
 function notChanged(args, next) {
-	var newest = args.newest
+	var newest = fs.statSync(CONF_FILE).mtime
 
-	if (!newest) {
-		// Build on conf changes
-		newest = fs.statSync(CONF_FILE).mtime
-
-		args.input.forEach(function(name, i, arr) {
-			name = name.split("?")[0]
-			if (!fs.existsSync(path.resolve(name))) {
-				// console.log("file " + name + " not found, try to resolve")
-				name = arr[i] = require.resolve(name)
-			}
-			var stat = fs.statSync(path.resolve(name))
-			if (newest < +stat.mtime) newest = stat.mtime
-		})
-	}
+	args.input.forEach(function(name, i, arr) {
+		name = name.split("?")[0]
+		if (!fs.existsSync(path.resolve(name))) {
+			name = arr[i] = require.resolve(name)
+		}
+		var stat = fs.statSync(path.resolve(name))
+		if (newest < +stat.mtime) newest = stat.mtime
+	})
 
 	if (fs.existsSync(path.resolve(args.output)) && newest < fs.statSync(path.resolve(args.output)).mtime) {
 		next && next()
@@ -349,10 +343,7 @@ function cssImport(args, str, _path) {
 	.replace(/\/\*[^!][\s\S]*?\*\//g, "")
 	.replace(/@import\s+url\((['"]?)(?!data:)(.+?)\1\);*/g, function(_, quote, fileName) {
 		var file = readFile(args.root + fileName)
-		, mtime = fs.statSync(path.resolve(args.root + fileName)).mtime
-
-		if (args.newest < +mtime) args.newest = mtime
-
+		args.input.push(args.root + fileName)
 		return cssImport(args, file, fileName.replace(/[^\/]*$/, ""))
 	})
 }
@@ -362,8 +353,6 @@ function minCss(args, next) {
 }
 
 function _minCss(args, next) {
-
-	args.newest = fs.statSync(CONF_FILE).mtime
 	if (!("root" in args)) args.root = args.output.replace(/[^\/]*$/, "")
 
 	var out = cssImport(args, "@import url('" + args.input.map(function(name) {
