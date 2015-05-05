@@ -79,10 +79,8 @@ function minJs(args, next) {
 	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+(?:" + args.toggle + "))", "g"), "/*")
 
 	if (args.devel) {
-		writeFile(typeof args.devel == "string" ?
-			args.devel :
-			args.output.replace(".js", "-src.js")
-		, banner + fileString)
+		if (typeof args.devel != "string") args.devel = args.output.replace(".js", "-src.js")
+		writeFile(args.devel, banner + fileString)
 	}
 
 	output.write(banner)
@@ -164,7 +162,6 @@ function minHtml(args, next) {
 function _minHtml(args, next) {
 	args.input = [ args.template ]
 	if (args.bootstrap) args.input.push(args.bootstrap)
-
 
 	var squash, match
 	, squashFiles = []
@@ -336,8 +333,9 @@ function normalizePath(p, root) {
 }
 
 function cssImport(args, str, _path) {
-	if (_path)
+	if (_path) {
 		str = str.replace(/url\(['"]?(?!data:)/g, "$&" + _path)
+	}
 
 	return str
 	.replace(/\/\*[^!][\s\S]*?\*\//g, "")
@@ -361,8 +359,7 @@ function _minCss(args, next) {
 
 	if (notChanged(args, next)) return
 
-	out = out
-	.replace(/[\r\n]+/g, "\n")
+	out = out.replace(/[\r\n]+/g, "\n")
 
 	//TODO:sprite
 	//out = out.replace(/url\((['"]?)(.+?)\1\)[; \t]*\/\*!\s*data-uri\s*\*\//g, function(_, quote, fileName) {
@@ -426,37 +423,22 @@ function _minCss(args, next) {
 function updateReadme(file) {
 	if (!file || !fs.existsSync(path.resolve(file)) || updatedReadmes[file]) return
 	updatedReadmes[file] = true
-	console.log("# Update readme: " + file)
 	var data = readFile(file)
 	, out = data.replace(/(@(version|date|author|license|stability)\s+).*/g, function(all, match, tag) {
 		tag = translate[tag] ? translate[tag][conf[tag]] || translate[tag] : conf[tag]
 		return tag ? match + tag : all
 	})
 
-	if (data != out) writeFile(file, out)
+	if (data != out) {
+		console.log("# Update readme: " + file)
+		writeFile(file, out)
+	}
 }
 
 var map = {
-	"--all": buildAll,
-	"--bundle": buildBundle
+	"--all": buildAll
 }
 
-
-function buildBundle() {
-	// $ git rev-list --count HEAD
-	// 68
-	// $ git rev-list --count --first-parent HEAD
-
-	if (fs.existsSync(BUILD_ROOT)) {
-
-	} else {
-		fs.mkdirSync(BUILD_ROOT)
-	}
-	// get list of hashs
-	exec("git log --format=%H -6", function (err, out, stderr) {
-		console.log(out.split(/\s+/))
-	})
-}
 
 function buildAll() {
 	readFileHashes(_buildAll)
