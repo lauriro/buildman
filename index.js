@@ -193,7 +193,7 @@ function _minHtml(args, next) {
 			if (match = /\ssquash(?:="([^"]+)"|\b)/i.exec(_)) {
 				if (!squash || match[1] && match[1] != squash.output) {
 					var out = match[1] || squashFiles.length.toString(32) + ".js"
-					squash = { input:[], file: out, output: root + out }
+					squash = { input:[], file: out, output: root + out, toggle: args.toggle }
 					squashFiles.push(squash)
 				}
 				args.input.push(root + file)
