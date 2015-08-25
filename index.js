@@ -449,8 +449,8 @@ function _buildAll() {
 		if (map[file]) return
 
 		var file = files[output]
-		if (typeof file == "string") file = [file]
-		if (Array.isArray(file)) file = { input: file }
+		if (file.constructor !== Object) file = { input: file }
+		if (!Array.isArray(file.input)) file.input = [file.input]
 
 		file.output = output
 
