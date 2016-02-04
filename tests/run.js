@@ -18,7 +18,7 @@ describe("buildman").
 				toggle: "abc|123",
 				banner: "/*!banner*/",
 				output: "tests/test-min.js",
-				sourceMap: "tests/test-min.js.map"
+				sourceMap: true
 			}, this.wait() )
 		}).
 		equal(

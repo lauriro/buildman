@@ -90,17 +90,28 @@ function minJs(args, next) {
 	output.write(banner)
 
 	function compileLocal() {
-		console.log("# compileLocal START " + args.output)
-		var closure = spawn("closure",
-			args.sourceMap ?
+		var closure
+		, directFiles = !banner && !args.toggle
+		, cliArgs = args.sourceMap ?
 			["--create_source_map", args.sourceMap, "--source_map_format", "V3"] :
 			[]
-		)
+
+			console.log("# compileLocal" +(directFiles?"[D]":"")+ " START " + args.output)
+
+		if (directFiles) {
+			args.input.map(function(name) {
+				cliArgs.push("--js", name.split("?")[0])
+			})
+		}
+
+		closure = spawn("closure", cliArgs)
 		closure.on("close", outputDone)
 
 		closure.stdout.pipe(output, { end: false })
 		closure.stderr.pipe(process.stderr)
-		closure.stdin.end(fileString)
+		if (!directFiles) {
+			closure.stdin.end(fileString)
+		}
 	}
 
 	function compileOnline() {
