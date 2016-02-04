@@ -2,8 +2,8 @@
 
 
 /*
- * @version  0.2.33
- * @date     2015-08-25
+ * @version  0.2.34
+ * @date     2016-02-04
  * @license  MIT License
  */
 
