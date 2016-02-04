@@ -168,6 +168,7 @@ function _minHtml(args, next) {
 	, root = args.template.replace(/[^\/]+$/, "")
 	, rawFiles = []
 	, scripts = []
+	, asIsRe = /\sas-is\s/i
 	, deferScripts = []
 	, inlineRe = /\sinline\s/i
 	, excludeRe = /\sexclude\s/i
@@ -182,6 +183,7 @@ function _minHtml(args, next) {
 	.replace(/\s+</g, "<")
 	.replace(/<!--[\s\S]*?-->/g, "")
 	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file) {
+		if (asIsRe.test(_)) return _.replace(asIsRe, " ")
 		if (exclude.indexOf(file) == -1 && !excludeRe.test(_)) {
 			var dataIf = /\sdata-if="([^"]+)"/.exec(_)
 			file = replace[file] || file
