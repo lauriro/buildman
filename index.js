@@ -327,7 +327,7 @@ function readFileHashes(next, args, _next) {
 }
 
 function normalizePath(p, root) {
-	for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|(^|[^.])\.\/|\/(?=\/)/, "$1")););
+	for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|(^|[^.])\.\/|(.)\/(?=\/)/, "$1$2")););
 	p = p.replace(/{hash}/g, fileHashes[root + p.split("?")[0]] || "")
 	return p
 }
