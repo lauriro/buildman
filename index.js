@@ -2,7 +2,7 @@
 
 
 /*
- * @version  0.2.34
+ * @version  0.3.0
  * @date     2016-02-04
  * @license  MIT License
  */
