@@ -205,7 +205,7 @@ function _minHtml(args, next) {
 				squash = null
 			}
 			rawFiles.push(file)
-			var arr = /\bdefer\b/i.test(_) ? deferScripts : scripts
+			var arr = /\b(async|defer)\b/i.test(_) ? deferScripts : scripts
 			file = '"' + normalizePath(file, root) + '"'
 			if (dataIf) file = "(" + dataIf[1] + ")&&" + file
 			if (arr.indexOf(file) == -1) arr.push(file)
