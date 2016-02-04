@@ -65,6 +65,10 @@ function minJs(args, next) {
 	}).join("\n")
 	, output = opened[args.output] = fs.createWriteStream(path.resolve(args.output.split("?")[0]))
 
+	if (args.sourceMap === true) {
+		args.sourceMap = args.output.replace(/\?|$/, ".map$&")
+	}
+
 	function outputDone() {
 		console.log("# compile DONE " + args.output)
 		if (args.sourceMap) {
