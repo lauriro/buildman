@@ -1,18 +1,24 @@
 ﻿<!DOCTYPE html>
-<html>
+<html data-manifest="x.appcache">
 	<head>
 		<!-- <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"> -->
 		<!-- <meta http-equiv="x-dns-prefetch-control" content="off"> -->
 		<title>Loading..</title>
+		<!--
+		Turn off telephone number detection in Safari on iOS,
+		you can still use the "tel" URI scheme.
+		<meta name="format-detection" content="telephone=no">
+		-->
 		<base href="./">
 		<meta name="viewport" content="initial-scale=1,maximum-scale=1">
 		<link rel="stylesheet" type="text/css" href="app.css">
-		<link rel="stylesheet" type="text/css" href="inline.css">
+		<link rel="stylesheet" type="text/css" inline href="inline.css">
 	</head>
 	<body>
 		<noscript>
 			<h1>Warning!</h1>This application requires JavaScript to be enabled in your Browser.
 		</noscript>
+		<script inline src="test-min.js"></script>
 		<script inline src="inline1.js"></script>
 		<script src="es5.js" data-if="!Function.prototype.bind"></script>
 		<script src="litejs-src.js"></script>
@@ -20,7 +26,7 @@
 		<script defer src="slow.js"></script>
 		<script squash="0.js?h={hash}" src="s1.js?h={hash}"></script>
 		<script squash src="s2.js"></script>
-		<script src="inline2.js"></script>
+		<script inline src="inline2.js"></script>
 		<script inline src="inline3.js?h={hash}"></script>
 	</body>
 </html>

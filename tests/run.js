@@ -1,5 +1,5 @@
 
-var buildman = require("../")
+var File = require("../").File
 , fs = require('fs')
 
 function rm(fileName) {
@@ -13,72 +13,67 @@ describe("buildman").
 	it( "should minimize js" ).
 		run(function(){
 			rm("tests/test-min.js")
-			buildman.minJs({
+			File("tests/test-min.js", {
 				input: ["dummy", "tests/toggle.js"],
 				toggle: "abc|123",
 				banner: "/*!banner*/",
-				output: "tests/test-min.js",
 				sourceMap: true
-			}, this.wait() )
+			})
+			.then(this.wait())
 		}).
-		equal(
+		ok(
 			function(){
 				console.log("# run 3")
 				return ""+fs.readFileSync("tests/test-ok.js")
-			},
-			function(){
-				return ""+fs.readFileSync("tests/test-min.js")
+				== ""+fs.readFileSync("tests/test-min.js")
 			}
 		).
-		equal(
+		/*
+		_ok(
 			function(){
 				return ""+fs.readFileSync("tests/test-min.js.map")
-			},
-			function(){
-				return ""+fs.readFileSync("tests/test-min.js.map.ok")
+				== ""+fs.readFileSync("tests/test-min.js.map.ok")
 			}
 		).
+		*/
 	it( "should minimize html" ).
 		run(function(){
 			rm("tests/test-min.html")
-			buildman.minHtml({
-				template: "tests/test.html",
+			File("tests/test-min.html", {
+				input: "tests/test.html",
 				manifest: "x.appcache",
-				bootstrap: "tests/test-min.js",
-				replace: {
+				_replace: {
 					"app.css": "min.css"
 				},
 				inline: [
 					"inline.css",
 					"inline2.js"
-				],
-				output: "tests/test-min.html"
-			}, this.wait())
+				]
+			})
+			.then(this.wait())
 		}).
-		equal(
+		ok(
 			function(){
 				return ""+fs.readFileSync("tests/test-ok.html")
-			},
-			function(){
-				return ""+fs.readFileSync("tests/test-min.html")
+				== ""+fs.readFileSync("tests/test-min.html")
 			}
 		).
 	it( "should minimize css", {_skip: "Not completed"} ).
 		run(function(){
 			rm("tests/css/css-min.css")
-			buildman.minCss({
+			File("tests/css/css-min.css", {
 				input: ["tests/css/css-src.css"],
-				banner: "/*!banner*/",
-				output: "tests/css/css-min.css"
-			}, this.wait() )
+				banner: "/*!banner*/"
+			})
+			.then(this.wait())
 		}).
-		equal(
+		ok(
 			function(){
-				return ""+fs.readFileSync("tests/css/css-ok.css")
-			},
-			function(){
-				return ""+fs.readFileSync("tests/css/css-min.css")
+				return ("" + fs.readFileSync("tests/css/css-ok.css")) ===
+				("" + fs.readFileSync("tests/css/css-min.css"))
 			}
 		).
 
 done()
+
+

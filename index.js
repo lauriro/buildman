@@ -1,416 +1,347 @@
 
-
-
-/*
- * @version  0.3.0
- * @date     2016-02-04
- * @license  MIT License
- */
-
-
-
-var gm, undef, fileHashes
-, path = require("path")
-, fs = require("fs")
-, BUILD_ROOT = path.resolve("b")
-, CONF_FILE = path.resolve("package.json")
-, exec = require("child_process").exec
+var undef, fileHashes
 , spawn = require("child_process").spawn
+, path = require("path")
+, util = require("util")
+, events = require("events")
+, fs = require("fs")
+, CONF_FILE = path.resolve("package.json")
 , conf = require( CONF_FILE ) || {}
-, files = conf.buildman || {}
-, updatedReadmes = {}
-, opened = {}
+, hasOwn = Object.prototype.hasOwnProperty
+, files = {}
+, adapters = File.adapters = {
+	css: { split: cssSplit, sep: "\n" },
+	html: { split: htmlSplit },
+	js: { min: jsMin, sep: "" }
+}
 , translate = {
 	// http://nodejs.org/api/documentation.html
 	stability: "0 - Deprecated,1 - Experimental,2 - Unstable,3 - Stable,4 - API Frozen,5 - Locked".split(","),
-	// https://spdx.org/licenses/
-	license: require(path.resolve(__dirname, "all-licenses.json")),
 	date: new Date().toISOString().split("T")[0]
 }
 
+function File(_name, _opts) {
+	var file = this
+	, name = path.resolve(_name.split("?")[0])
 
-
-function notChanged(args, next) {
-	var newest = fs.statSync(CONF_FILE).mtime
-
-	args.input.forEach(function(name, i, arr) {
-		name = name.split("?")[0]
-		if (!fs.existsSync(path.resolve(name))) {
-			name = arr[i] = require.resolve(name)
-		}
-		var stat = fs.statSync(path.resolve(name))
-		if (newest < +stat.mtime) newest = stat.mtime
-	})
-
-	if (fs.existsSync(path.resolve(args.output)) && newest < fs.statSync(path.resolve(args.output)).mtime) {
-		next && next()
-		return true
+	if (files[name]) {
+		return files[name]
+	}
+	if (!(file instanceof File)) {
+		return new File(name, _opts)
 	}
 
-	console.log("# Build " + args.output)
+	events.call(file)
+
+	var opts = file.opts = _opts || {}
+	, ext = file.ext = name.split(".").pop()
+
+	files[name] = file
+	file._depends = []
+	file.write = file.write.bind(file)
+
+	if (!("root" in opts)) {
+		opts.root = name.replace(/[^\/]*$/, "")
+	}
+	file.name = opts.name = name//.slice(opts.root.length)
+
+	if (typeof opts.input == "string") {
+		opts.input = [opts.input]
+	}
+
+	if (opts.sourceMap === true) {
+		opts.sourceMap = name.replace(/\?|$/, ".map$&").slice(opts.root.length)
+	}
+	if (opts.toggle) {
+		if (!opts.replace) {
+			opts.replace = []
+		}
+		opts.replace.push([
+			new RegExp("\\/\\/(?=\\*\\*\\s+(?:" + opts.toggle + "))", "g"),
+			"/*"
+		])
+	}
+
+	file.reset()
+
+	setImmediate(file.wait())
+	readFileHashes(opts, file.wait())
+
+	file.build()
+
+	return file
 }
 
+File.prototype = {
+	wait: hold,
+	syncMethods: ["on", "toString"],
+	depends: function(child) {
+		var file = this
+		child.on("change", file.write)
+		return file
+	},
+	reset: function() {
+		var file = this
 
-function minJs(args, next) {
-	if (notChanged(args, next)) return
-
-	var subDirFileRe = /\//
-	, querystring = require("querystring")
-	, banner = args.banner ? args.banner + "\n" : ""
-	, fileString = args.input.map(function(name) {
-		if (!subDirFileRe.test(name)) {
-			updateReadme(name)
-		}
-		return readFile(name)
-	}).join("\n")
-	, output = opened[args.output] = fs.createWriteStream(path.resolve(args.output.split("?")[0]))
-
-	if (args.sourceMap === true) {
-		args.sourceMap = args.output.replace(/\?|$/, ".map$&")
-	}
-
-	function outputDone() {
-		console.log("# compile DONE " + args.output)
-		if (args.sourceMap) {
-			output.write("//# sourceMappingURL=" + args.sourceMap + "\n")
-		}
-		output.end(function() {
-			opened[args.output] = null
-			if (next) next()
+		file._depends.forEach(function() {
+			child.off("change", file.write)
 		})
-	}
+		file._depends.length = 0
+		file.content = []
+		return file
+	},
+	build: function() {
+		var file = this
+		, opts = file.opts
+		, resume = file.wait()
+		, adapter = adapters[file.ext] || {}
 
-	if (args.toggle) fileString = fileString.replace(new RegExp("\\/\\/(?=\\*\\*\\s+(?:" + args.toggle + "))", "g"), "/*")
-
-	if (args.devel) {
-		if (typeof args.devel != "string") args.devel = args.output.replace(".js", "-src.js")
-		writeFile(args.devel, banner + fileString)
-	}
-
-	output.write(banner)
-
-	function compileLocal() {
-		var closure
-		, directFiles = !banner && !args.toggle
-		, cliArgs = args.sourceMap ?
-			["--create_source_map", args.sourceMap, "--source_map_format", "V3"] :
-			[]
-
-			console.log("# compileLocal" +(directFiles?"[D]":"")+ " START " + args.output)
-
-		if (directFiles) {
-			args.input.map(function(name) {
-				cliArgs.push("--js", name.split("?")[0])
-			})
-		}
-
-		closure = spawn("closure", cliArgs)
-		closure.on("close", outputDone)
-
-		closure.stdout.pipe(output, { end: false })
-		closure.stderr.pipe(process.stderr)
-		if (!directFiles) {
-			closure.stdin.end(fileString)
-		}
-	}
-
-	function compileOnline() {
-		console.log("# compileOnline START " + args.output)
-		args.sourceMap = false // Online compiler does not support sourceMap
-		var postData = querystring.stringify(
-			{ "output_format": "json"
-			//, "compilation_level" : "ADVANCED_OPTIMIZATIONS"
-			, "output_info": ["compiled_code", "warnings", "errors", "statistics"]
-			, "js_code" : fileString
-			})
-		, postOptions =
-			{ host: "closure-compiler.appspot.com"
-			, path: "/compile"
-			, method: "POST"
-			, headers:
-				{ "Content-Type": "application/x-www-form-urlencoded"
-				, "Content-Length": postData.length
+		if (opts.input) {
+			file.content = opts.input.map(function(fileName, i, arr) {
+				if (!fs.existsSync(path.resolve(fileName))) {
+					fileName = arr[i] = require.resolve(fileName)
 				}
+				var child = File(fileName, {
+					replace: opts.replace,
+					root: opts.root
+				}).then(resume.wait())
+				file.depends(child)
+				return child
+			})
+			file.write()
+		} else {
+			var source = readFile(file.name)
+
+			if (opts.replace) {
+				opts.replace.forEach(function(arr) {
+					source = source.replace(arr[0], arr[1])
+				})
 			}
-		, postReq = require("http").request(postOptions, function(res) {
-			var text = ""
-			res.setEncoding("utf8");
-			res.on("data", function (chunk) {
-				text += chunk
-			});
-			res.on("end", function(){
-				console.log("# compileOnline DONE " + args.output)
-				try {
-					var json = JSON.parse(text)
-					output.write(json.compiledCode + "\n")
-				} catch (e) {
-					console.error("ERROR:", text)
-					throw "Invalid response"
+
+			file.content = adapter.split ? adapter.split(source, opts) : [ source ]
+			file.content.forEach(function(junk, i, arr) {
+				if (adapter.min && typeof junk == "string") {
+					resume.wait()
+
+					adapter.min(junk, function(err, res) {
+						arr[i] = res
+						resume()
+					})
+				} else if (junk instanceof File) {
+					file.depends(junk)
+					junk.then(resume.wait())
 				}
-				outputDone()
 			})
-		})
+		}
 
-		postReq.end(postData);
+		setImmediate(resume)
+	},
+	write: function(by) {
+		var file = this
+		if (!file.opts.mem) {
+			writeFile(file.name, file.toString())
+		}
+	},
+	then: function(next, scope) {
+		if (typeof next == "function") {
+			next.call(scope || this)
+		}
+		return this
+	},
+	toString: function() {
+		var file = this
+		, opts = file.opts
+		, adapter = adapters[file.ext] || {}
+		, str = file.content.filter(Boolean).join(adapter.sep || "")
+
+		return (
+			(opts.banner ? opts.banner + "\n" : "") +
+			str.trim() +
+			(opts.sourceMap ? "\n//# sourceMappingURL=" + opts.sourceMap + "\n" : "")
+		)
 	}
-
-	programExists("closure", function(err) {
-		if (err) return compileOnline()
-
-		compileLocal()
-	})
 }
 
+util.inherits(File, events)
 
-function readFile(fileName) {
-	return fs.readFileSync(path.resolve(fileName.split("?")[0]), "utf8")
+
+function wait(fn) {
+	var pending = 1
+	function resume() {
+		if (!--pending && fn) fn.call(this)
+	}
+	resume.wait = function() {
+		pending++
+		return resume
+	}
+	return resume
 }
 
-function writeFile(fileName, content) {
-	fs.writeFileSync(path.resolve(fileName.split("?")[0]), content, "utf8")
+function hold(ignore) {
+	var k
+	, obj = this
+	, hooks = []
+	, hooked = []
+	, _resume = wait(resume)
+	ignore = ignore || obj.syncMethods || []
+
+	for (k in obj) if (typeof obj[k] == "function" && ignore.indexOf(k) == -1) !function(k) {
+		hooked.push(k, hasOwn.call(obj, k) && obj[k])
+		obj[k] = function() {
+			hooks.push(k, arguments)
+			return obj
+		}
+	}(k)
+
+	/**
+	 * `wait` is already in hooked array,
+	 * so override hooked method
+	 * that will be cleared on resume.
+	 */
+	obj.wait = _resume.wait
+
+	return _resume
+
+	function resume() {
+		for (var v, scope = obj, i = hooked.length; i--; i--) {
+			if (hooked[i]) obj[hooked[i-1]] = hooked[i]
+			else delete obj[hooked[i-1]]
+		}
+		// i == -1 from previous loop
+		for (; v = hooks[++i]; ) {
+			scope = scope[v].apply(scope, hooks[++i]) || scope
+		}
+		hooks = hooked = null
+	}
 }
 
-function minHtml(args, next) {
-	readFileHashes(_minHtml, args, next)
+function htmlSplit(str, opts) {
+	var pos, file, ext, file2, match, match2, out, squash, tmp
+	, squashed = []
+	, lastIndex = 0
+	, re = /<link[^>]+href="([^>]*?)".*?>|<(script)[^>]+src="([^>]*?)"[^>]*><\/\2>/ig
+	, inlineRe = /\sinline\b(?:=["']?([^"']+))?/i
+	, excludeRe = /\sexclude\b/i
+	, squashRe = /\s+squash\b(?:=["']?(.+?)["'])?/i
+	, load = []
+
+	str = str
+	.replace(/<!((?:--)+)[^]*?\1>/g, "")
+	.replace(/data-(?=manifest=)/, "")
+
+	for (out = [ str ]; match = re.exec(str); ) {
+		file = opts.root + (match[1] || match[3])
+		ext = match[2] ? "js" : "css"
+		pos = out.length
+		out.splice(-1, 1,
+			str.slice(lastIndex, match.index), "",
+			str.slice(lastIndex = re.lastIndex)
+		)
+		if (excludeRe.test(match[0])) {
+			continue
+		}
+
+		if (match2 = squashRe.exec(match[0])) {
+			file2 = (
+				match2[1] ? opts.root + match2[1] :
+				squash && squash.ext == ext ? squash.name :
+				opts.root + squashed.length.toString(32) + "." + ext
+			)
+			if (!squash || squash.name !== file2) {
+				squash = File(file2, { input: [] })
+				squashed.push(squash.wait())
+			}
+			squash.opts.input.push(file.replace(/\?.*/, ""))
+			if (squash.opts.input.length > 1) {
+				continue
+			}
+			file = file2
+		}
+		var dataIf = /\sdata-if="([^"?]+)/.exec(match[0])
+		if (inlineRe.test(match[0])) {
+			out.splice(-2, 1,
+				match[2] ? "<script>" : "<style>",
+				File(file, {
+					replace: [
+						["/*!{loadFiles}*/", load]
+					]
+				}),
+				match[2] ? "</script>" : "</style>"
+			)
+		} else if (match[2] || dataIf) {
+			load.push(
+				(dataIf ? "(" + dataIf[1] + ")&&'" : "'") +
+				file.slice(opts.root.length) + "'"
+			)
+		} else {
+			tmp = match[0]
+			if (match2) {
+				tmp = tmp
+				.replace(squashRe, "")
+				.replace(match[1] || match[3], file.slice(opts.root.length))
+			}
+			out[pos] = tmp
+		}
+	}
+	squashed.forEach(function(fn) { fn() })
+	return out.filter(Boolean).map(htmlMin, opts)
 }
 
-function _minHtml(args, next) {
-	args.input = [ args.template ]
-	if (args.bootstrap) args.input.push(args.bootstrap)
-
-	var squash, match
-	, squashFiles = []
-	, root = args.template.replace(/[^\/]+$/, "")
-	, rawFiles = []
-	, scripts = []
-	, asIsRe = /\sas-is\s/i
-	, deferScripts = []
-	, inlineRe = /\sinline\s/i
-	, excludeRe = /\sexclude\s/i
-	, exclude = args.exclude || []
-	, inline = args.inline || []
-	, replace = args.replace || {}
-
-	var output = readFile(args.template)
+function htmlMin(str) {
+	var opts = this
+	return typeof str !== "string" ? str : str
 	.replace(/[\r\n]+/g, "\n")
 	.replace(/\n\s*\n/g, "\n")
 	.replace(/\t/g, " ")
-	.replace(/\s+</g, "<")
-	.replace(/<!--[\s\S]*?-->/g, "")
-	.replace(/<(script)[^>]+src="([^>]*?)"[^>]*><\/\1>/g, function(_, tag, file) {
-		if (asIsRe.test(_)) return _.replace(asIsRe, " ")
-		if (exclude.indexOf(file) == -1 && !excludeRe.test(_)) {
-			var dataIf = /\sdata-if="([^"]+)"/.exec(_)
-			file = replace[file] || file
-			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
-				var bs = readFile(root + file).trim()
-				if (dataIf) bs = "if(" + dataIf[1] + "){" + bs + "}"
-				return "\f<script>" + bs + "</script>"
-			}
-			if (match = /\ssquash(?:="([^"]+)"|\b)/i.exec(_)) {
-				if (!squash || match[1] && match[1] != squash.output) {
-					var out = match[1] || squashFiles.length.toString(32) + ".js"
-					squash = { input:[], file: out, output: root + out, toggle: args.toggle }
-					squashFiles.push(squash)
-				}
-				args.input.push(root + file)
-				squash.input.push(root + file)
-				file = squash.file
-			} else {
-				squash = null
-			}
-			rawFiles.push(file)
-			var arr = /\b(async|defer)\b/i.test(_) ? deferScripts : scripts
-			file = '"' + normalizePath(file, root) + '"'
-			if (dataIf) file = "(" + dataIf[1] + ")&&" + file
-			if (arr.indexOf(file) == -1) arr.push(file)
-		}
-		return "\f"
-	})
+	.replace(/\s+(?=<|\/?>|$)/g, "")
 	.replace(/\b(href|src)="(?!data:)(.+?)"/gi, function(_, tag, file) {
-		return tag + '="' + normalizePath(file, root) + '"'
-	})
-
-	if (notChanged(args, next)) return
-
-	var pending = squashFiles.length
-	if (opened[args.bootstrap]) {
-		pending++
-		opened[args.bootstrap].on("finish", fileDone)
-	}
-
-	function fileDone() {
-		if (--pending == 0) writeOutput()
-	}
-
-	if (pending) {
-		squashFiles.forEach(function(obj) {
-			minJs(obj, fileDone)
-		})
-	} else {
-		writeOutput()
-	}
-
-	function writeOutput() {
-		output = output
-		// <link rel="stylesheet" type="text/css" href="app.css">
-		//.replace(/<link>/)
-		.replace(/<link[^>]+href="([^>]*?)".*?>/g, function(_, file) {
-			if (exclude.indexOf(file) > -1 || excludeRe.test(_)) return ""
-			if (replace[file]) {
-				_ = _.replace(file, normalizePath(replace[file], root))
-				file = replace[file]
-			}
-			if (inlineRe.test(_) || inline.indexOf(file) != -1) {
-				return "<style>" + readFile(root + file).trim() + "</style>"
-			}
-			return _
-		})
-		.replace(/\f+/, function(){
-			if (!args.bootstrap) return ""
-
-			var bs = readFile(args.bootstrap)
-			.replace("this,[]", "this,[" + scripts + "]" +
-				(deferScripts.length ? ", function(){xhr.load([" + deferScripts + "])}" : "") )
-
-			return "<script>\n" + bs + "</script>"
-		})
-		.replace(/\f+/g, "")
-		//This breakes code when haml followed by javascript
-		//.replace(/[\s;]*<\/script>\s*<script>/g, ";")
-
-		if (args.manifest) {
-			console.log("# Update manifest: " + args.manifest)
-			var escapeRe = /[.*+?^=!:${}()|\[\]\/\\]/g
-			, replacedFiles = []
-			, buildedFiles = Object.keys(files)
-			, manifestFile = readFile(root + args.manifest)
-				.replace(/#.+$/m, "# " + new Date().toISOString())
-
-			buildedFiles.forEach(function(file) {
-				var replace = files[file].replace
-				if (replace) for (var key in replace) {
-					replacedFiles.push(replace[key])
-				}
-			})
-
-			replacedFiles
-			.concat(buildedFiles, rawFiles)
-			.filter(function(file, pos, arr) {
-				return file.indexOf("{hash}") != -1 && arr.lastIndexOf(file) == pos
-			})
-			.forEach(function(file) {
-				var reStr = "^"
-				+ file.replace("{hash}", "\f").replace(escapeRe, "\\$&").replace(/\f/g, "[0-9a-f]*")
-				+ "$"
-				, re = new RegExp(reStr, "m")
-				manifestFile = manifestFile.replace(re, normalizePath(file, root))
-			})
-
-			writeFile(root + args.manifest, manifestFile)
-			output = output.replace(/<html\b/, '$& manifest="' + args.manifest + '"')
-		}
-
-		writeFile(args.output, output)
-		if (next) next()
-	}
-}
-
-function readFileHashes(next, args, _next) {
-	if (fileHashes) return next(args, _next)
-	fileHashes = {}
-	// $ git ls-tree -r --abbrev=1 HEAD
-	// 100644 blob 1f537	public/robots.txt
-	// 100644 blob 0230	public/templates/devices.haml
-	// $ git cat-file -p 1f537
-	var data = ""
-	, git = spawn("git", ["ls-files", "-sz", "--abbrev=1"])
-
-	git.stdout.on("data", function (_data) {
-		data += _data
-	})
-	git.stderr.pipe(process.stderr)
-
-	git.on("close", function (code) {
-		data.split("\0").reduceRight(function(map, line, index) {
-			if (line) {
-				index = line.indexOf("\t")
-				map[line.slice(1 + index)] = line.split(" ")[1]
-			}
-			return map
-		}, fileHashes)
-		next(args, _next)
+		return tag + '="' + normalizePath(file, opts.root) + '"'
 	})
 }
 
-function normalizePath(p, root) {
-	for (;p != (p = p.replace(/[^/]*[^.]\/\.\.\/|(^|[^.])\.\/|(.)\/(?=\/)/, "$1$2")););
-	p = p.replace(/{hash}/g, fileHashes[root + p.split("?")[0]] || "")
-	return p
-}
+function cssSplit(str, opts) {
+	var match, out
+	, lastIndex = 0
+	, re = /@import\s+url\((['"]?)(?!data:)(.+?)\1\);*/ig
 
-function cssImport(args, str, _path) {
-	if (_path) {
-		str = str.replace(/url\(['"]?(?!data:)/g, "$&" + _path)
+	if (opts.root !== opts.name.replace(/[^\/]*$/, "")) {
+		str = str.replace(/url\((['"]?)(?!data:)(.+?)\1\)/ig, function(_, q, name) {
+			name = path.resolve(opts.name.replace(/[^\/]*$/, name))
+			name = name.replace(/{hash}/g, fileHashes[name.split("?")[0]] || "")
+			return 'url("' + path.relative(opts.root, name) + '")'
+		})
 	}
 
-	return str
+	for (out = [ str ]; match = re.exec(str); ) {
+		out.splice(-1, 1,
+			str.slice(lastIndex, match.index),
+			File(path.resolve(opts.root, match[2]), opts),
+			str.slice(lastIndex = re.lastIndex)
+		)
+	}
+	return out.filter(Boolean).map(cssMin, opts)
+}
+
+function cssMin(str) {
+	var opts = this
+	return typeof str !== "string" ? str : str
 	.replace(/\/\*[^!][\s\S]*?\*\//g, "")
-	.replace(/@import\s+url\((['"]?)(?!data:)(.+?)\1\);*/g, function(_, quote, fileName) {
-		var file = readFile(args.root + fileName)
-		args.input.push(args.root + fileName)
-		return cssImport(args, file, fileName.replace(/[^\/]*$/, ""))
-	})
-}
+	.replace(/[\r\n]+/g, "\n")
 
-function minCss(args, next) {
-	readFileHashes(_minCss, args, next)
-}
-
-function _minCss(args, next) {
-	if (!("root" in args)) args.root = args.output.replace(/[^\/]*$/, "")
-
-	var out = cssImport(args, "@import url('" + args.input.map(function(name) {
-		return name.slice(args.root.length)
-	}).join("');@import url('") + "');", "")
-
-	if (notChanged(args, next)) return
-
-	out = out.replace(/[\r\n]+/g, "\n")
-
-	//TODO:sprite
-	//out = out.replace(/url\((['"]?)(.+?)\1\)[; \t]*\/\*!\s*data-uri\s*\*\//g, function(_, quote, fileName) {
-	out = out.replace(/(.*)\/\*!\s*([\w-]+)\s*([\w-.]*)\s*\*\//g, function(_, line, cmd, param) {
+	.replace(/(.*)\/\*!\s*([\w-]+)\s*([\w-.]*)\s*\*\//g, function(_, line, cmd, param) {
 		switch (cmd) {
 		case "data-uri":
 			line = line.replace(/url\((['"]?)(.+?)\1\)/g, function(_, quote, fileName) {
-				var str = fs.readFileSync(path.resolve(args.root + fileName), "base64")
+				var str = fs.readFileSync(path.resolve(opts.root + fileName), "base64")
 				return 'url("data:image/' + fileName.split(".").pop() + ";base64," + str + '")'
-			})
-			break;
-		case "sprite":
-			if (!gm) try {
-				gm = require("gm")
-			} catch (e) {
-				console.log("# Please install optional module gm for sprites")
-				process.exit(1)
-			}
-
-			line = line.replace(/url\((['"]?)(.+?)\1\)([^)]*)/g, function(_, quote, fileName, pos) {
-				return 'url("' + param + "." + fileName.split(".").pop() + '")'
-					+ pos
-						.replace(/px 0px/, "px -" + 1 + "px")
-						.replace(/\btop\b/, "-" + 1 + "px")
-						// -e "s/)/) 0px -${pos}px/"
 			})
 			break;
 		}
 		return line
 	})
 
-
 	// Remove optional spaces and put each rule to separated line
-	out = out.replace(/(["'])((?:\\?.)*?)\1|[^"']+/g, function(_, q, str) {
+	.replace(/(["'])((?:\\?.)*?)\1|[^"']+/g, function(_, q, str) {
 		if (q) return q == "'" && str.indexOf('"') == -1 ? '"' + str + '"' : _
 		return _.replace(/[\t\n]/g, " ")
 		.replace(/ *([,;{}]) */g, "$1")
@@ -421,27 +352,113 @@ function _minCss(args, next) {
 	})
 
 	// Use CSS shorthands
-	out = out
 	.replace(/([^0-9])-?0(px|em|%|in|cm|mm|pc|pt|ex)/g, "$10")
 	.replace(/:0 0( 0 0)?(;|})/g, ":0$2")
-	.replace(/url\("(?!data:)(.+?)"/g, function(_, file) {
-		return 'url("' + normalizePath(file, args.root) + '"'
-	})
 	.replace(/url\("([\w\/_.-]*)"\)/g, "url($1)")
 	.replace(/([ :,])0\.([0-9]+)/g, "$1.$2")
+}
 
-	//TODO:fonts
-	//http://stackoverflow.com/questions/17664717/most-efficient-webfont-configuration-with-html5-appcache
 
-	writeFile(args.output, out)
-	if (next) next()
+function jsMin(str, next) {
+	var res = ""
+	, closure = spawn("closure-compiler")
+
+	closure.on("close", function() {
+		next(null, res)
+	})
+
+	closure.stdout.on("data", function(chunk) {
+		res += chunk
+	})
+	closure.stdin.end(str)
+}
+
+function programExists(name, next) {
+	exec("command -v " + name, next)
+}
+
+function readFileHashes(opts, next) {
+	if (fileHashes) return next()
+	fileHashes = {}
+	// $ git ls-tree -r --abbrev=1 HEAD
+	// 100644 blob 1f537	public/robots.txt
+	// 100644 blob 0230	public/templates/devices.haml
+	// $ git cat-file -p 1f537
+	var data = ""
+	, git = spawn("git", ["ls-files", "-sz", "--abbrev=1"])
+	, cwd = process.cwd() + "/"
+
+	git.stdout.on("data", function (_data) {
+		data += _data
+	})
+	git.stderr.pipe(process.stderr)
+
+	git.on("close", function (code) {
+		data.split("\0").reduceRight(function(map, line, index) {
+			if (line) {
+				index = line.indexOf("\t")
+				map[cwd + line.slice(1 + index)] = line.split(" ")[1]
+			}
+			return map
+		}, fileHashes)
+		next()
+	})
+}
+
+function execute() {
+	var input, output, arg
+	, args = process.argv
+	, i = 2
+
+	for (; arg = args[i++]; ) {
+		switch (arg) {
+		case "-i":
+			if (!input) input = []
+			input.push(args[i++])
+			break;
+		case "-o":
+			output = args[i++]
+			break;
+		case "-r":
+			updateReadme(args[i++])
+			break;
+		}
+		if (input && output) {
+			File(output, { input: input })
+			input = output = ""
+		}
+	}
+}
+
+if (module.parent) {
+	// Used as module
+	exports.File = File
+	exports.updateReadme = updateReadme
+} else {
+	// executed as standalone
+	execute()
+	if (conf.readmeFilename) {
+		updateReadme(conf.readmeFilename)
+	}
+}
+
+function normalizePath(p, root) {
+	for (; p != (p = p.replace(/[^/]*[^.]\/\.\.\/|(^|[^.])\.\/|(.)\/(?=\/)/, "$1$2")); );
+	p = p.replace(/{hash}/g, fileHashes[root + p.split("?")[0]] || "")
+	return p
+}
+
+function readFile(fileName) {
+	return fs.readFileSync(path.resolve(fileName.split("?")[0]), "utf8")
+}
+
+function writeFile(fileName, content) {
+	fs.writeFileSync(path.resolve(fileName.split("?")[0]), content, "utf8")
 }
 
 function updateReadme(file) {
-	if (!file || !fs.existsSync(path.resolve(file)) || updatedReadmes[file]) return
-	updatedReadmes[file] = true
 	var data = readFile(file)
-	, out = data.replace(/(@(version|date|author|license|stability)\s+).*/g, function(all, match, tag) {
+	, out = data.replace(/(@(version|date|author|stability)\s+).*/g, function(all, match, tag) {
 		tag = translate[tag] ? translate[tag][conf[tag]] || translate[tag] : conf[tag]
 		return tag ? match + tag : all
 	})
@@ -451,73 +468,4 @@ function updateReadme(file) {
 		writeFile(file, out)
 	}
 }
-
-var map = {
-	"--all": buildAll
-}
-
-
-function buildAll() {
-	readFileHashes(_buildAll)
-}
-
-function _buildAll() {
-	Object.keys(files).forEach(function(output) {
-		if (map[file]) return
-
-		var file = files[output]
-		if (file.constructor !== Object) file = { input: file }
-		if (!Array.isArray(file.input)) file.input = [file.input]
-
-		file.output = output
-
-		switch (output.split(".").pop()) {
-		case "js":
-			minJs(file)
-			break;
-		case "html":
-			minHtml(file)
-			break;
-		case "css":
-			minCss(file)
-			break;
-		default:
-			console.error("Unknown type "+output)
-		}
-	})
-
-	updateReadme(conf.readmeFilename)
-	updateReadme(conf.main)
-}
-
-
-function invalidTarget(name) {
-	console.error("ERROR: invalid target " + name)
-}
-
-function execute() {
-	for (var i = 2, val; val = process.argv[i++]; ) {
-		;( map[val] || invalidTarget )(val)
-	}
-}
-
-if (module.parent) {
-	// Used as module
-
-	exports.minJs = minJs
-	exports.minHtml = minHtml
-	exports.minCss = minCss
-	exports.execute = execute
-} else {
-	// executed as standalone
-	execute()
-}
-
-
-
-
-function programExists(name, next) {
-	exec("command -v " + name, next)
-}
-
 
