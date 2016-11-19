@@ -102,6 +102,7 @@ File.prototype = {
 					fileName = arr[i] = require.resolve(fileName)
 				}
 				var child = File(fileName, {
+					noMin: opts.noMin,
 					replace: opts.replace,
 					root: opts.root
 				}).then(resume.wait())
@@ -120,7 +121,7 @@ File.prototype = {
 
 			file.content = adapter.split ? adapter.split(source, opts) : [ source ]
 			file.content.forEach(function(junk, i, arr) {
-				if (adapter.min && typeof junk == "string") {
+				if (adapter.min && !opts.noMin && typeof junk == "string") {
 					resume.wait()
 
 					adapter.min(junk, function(err, res) {
@@ -220,6 +221,7 @@ function htmlSplit(str, opts) {
 	, squashed = []
 	, lastIndex = 0
 	, re = /<link[^>]+href="([^>]*?)".*?>|<(script)[^>]+src="([^>]*?)"[^>]*><\/\2>/ig
+	, buildRe   = /\sbuild=(("|')(.+?)\2|[^\s]+)/i
 	, inlineRe = /\sinline\b(?:=["']?([^"']+))?/i
 	, excludeRe = /\sexclude\b/i
 	, squashRe = /\s+squash\b(?:=["']?(.+?)["'])?/i
@@ -237,6 +239,11 @@ function htmlSplit(str, opts) {
 			str.slice(lastIndex, match.index), "",
 			str.slice(lastIndex = re.lastIndex)
 		)
+
+		if (match2 = buildRe.exec(match[0])) {
+			File(file, { noMin: 1, input: (match2[3] || match2[1]).split(",") })
+		}
+
 		if (excludeRe.test(match[0])) {
 			continue
 		}
