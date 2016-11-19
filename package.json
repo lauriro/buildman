@@ -1,6 +1,6 @@
 {
   "name": "buildman",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "stability": 1,
   "license": "MIT",
   "author": "Lauri Rooden <lauri@rooden.ee>",
@@ -12,12 +12,11 @@
   "bin": "bin/cmd.js",
   "readmeFilename": "README.md",
   "files": [
-    "all-licenses.json",
     "bin",
     "index.js"
   ],
   "scripts": {
-    "build": "node index.js --all",
+    "build": "node index.js",
     "test": "node tests/run.js"
   },
   "repository": "git://github.com/lauriro/buildman.git",
