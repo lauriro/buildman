@@ -332,7 +332,7 @@ function cssSplit(str, opts) {
 function cssMin(str) {
 	var opts = this
 	return typeof str !== "string" ? str : str
-	.replace(/\/\*[^!][\s\S]*?\*\//g, "")
+	.replace(/\/\*(?!!)[^]*?\*\//g, "")
 	.replace(/[\r\n]+/g, "\n")
 
 	.replace(/(.*)\/\*!\s*([\w-]+)\s*([\w-.]*)\s*\*\//g, function(_, line, cmd, param) {
